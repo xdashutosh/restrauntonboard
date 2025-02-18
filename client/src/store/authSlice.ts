@@ -22,7 +22,7 @@ const authSlice = createSlice({
       state.phoneNumber = action.payload;
     },
     generateOTP: (state) => {
-      state.otp = Math.floor(1000 + Math.random() * 9000).toString();
+      state.otp =1211;
       state.otpExpiry = Date.now() + 120000; // 2 minutes
     },
     verifyOTP: (state, action: PayloadAction<string>) => {
