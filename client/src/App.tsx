@@ -10,10 +10,11 @@ import { useSelector } from "react-redux";
 import { RootState } from "./store/store";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
+  const [, setLocation] = useLocation();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   
   if (!isAuthenticated) {
-    window.location.href = "/login";
+    setLocation("/login");
     return null;
   }
   
