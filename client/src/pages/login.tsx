@@ -45,9 +45,10 @@ export default function Login() {
     setTimeLeft(120);
   };
 
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+
   const handleVerifyOTP = () => {
     dispatch(verifyOTP(otpInput));
-    const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
     if (isAuthenticated) {
       toast({
         title: "Success",
