@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Route, Switch, useLocation } from 'wouter';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Box, 
   AppBar, 
@@ -40,11 +41,12 @@ const navItems = [
 
 export default function Dashboard() {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [location, setLocation] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isOnline } = useSelector((state: RootState) => state.restaurant);
 
-  const currentPath = location.split('?')[0];
+  const currentPath = location.pathname;
   const currentTabIndex = navItems.findIndex(item => 
     currentPath === item.path || 
     (currentPath === '/dashboard' && item.path === '/dashboard')
@@ -76,13 +78,13 @@ export default function Dashboard() {
       </AppBar>
 
       <Box sx={{ mt: 2, px: 2 }}>
-        <Switch>
-          <Route path="/dashboard" exact component={HomePage} />
-          <Route path="/dashboard/reports" component={ReportsPage} />
-          <Route path="/dashboard/orders" component={OrdersPage} />
-          <Route path="/dashboard/menu" component={MenuPage} />
-          <Route path="/dashboard/feedback" component={FeedbackPage} />
-        </Switch>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+        </Routes>
       </Box>
 
       <Paper 
@@ -92,7 +94,7 @@ export default function Dashboard() {
         <BottomNavigation
           value={currentTabIndex}
           onChange={(_, newValue) => {
-            setLocation(navItems[newValue].path);
+            navigate(navItems[newValue].path);
           }}
         >
           {navItems.map((item) => (

@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, TextField, Button, Typography, Box } from '@mui/material';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { setPhoneNumber, generateOTP, verifyOTP } from '@/store/authSlice';
 import type { RootState } from '@/store/store';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function Login() {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [showOTP, setShowOTP] = useState(false);
@@ -54,7 +55,7 @@ export default function Login() {
         title: "Success",
         description: "OTP verified successfully"
       });
-      setLocation('/register');
+      navigate('/register');
     } else {
       toast({
         title: "Invalid OTP",

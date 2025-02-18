@@ -1,3 +1,4 @@
+
 import {
   Drawer,
   List,
@@ -13,7 +14,7 @@ import {
   Feedback,
   ShoppingCart,
 } from '@mui/icons-material';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardDrawerProps {
   open: boolean;
@@ -29,7 +30,7 @@ const drawerItems = [
 ];
 
 export default function DashboardDrawer({ open, onClose }: DashboardDrawerProps) {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
 
   return (
     <Drawer
@@ -43,7 +44,7 @@ export default function DashboardDrawer({ open, onClose }: DashboardDrawerProps)
             button
             key={item.text}
             onClick={() => {
-              setLocation(item.path);
+              navigate(item.path);
               onClose();
             }}
           >

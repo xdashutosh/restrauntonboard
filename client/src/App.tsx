@@ -9,12 +9,14 @@ import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 import { useSelector } from "react-redux";
 import { RootState } from "./store/store";
+import { useLocation, Navigate as RouterNavigate } from "react-router-dom";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const location = useLocation();
   
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <RouterNavigate to="/login" state={{ from: location }} replace />;
   }
   
   return <>{children}</>;
