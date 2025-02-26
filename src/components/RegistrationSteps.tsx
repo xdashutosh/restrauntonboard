@@ -17,6 +17,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { MobileTimePicker } from '@mui/x-date-pickers/MobileTimePicker';
 import PhotoUpload from './PhotoUpload';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const INDIAN_STATIONS = [
   'Mumbai Central',
@@ -49,6 +50,8 @@ export default function RegistrationForm() {
     idProof: '',
     addressProof: ''
   });
+
+  const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false); // State for drawer
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
@@ -291,7 +294,7 @@ export default function RegistrationForm() {
           <img src='https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRVKyAHIjNlFhGsr9sugvi1_4G868kL9yjR1nbh6SYQcICe2ZUc' height={150} width={150}/>
           <Typography fontFamily={"font-katibeh"} variant='h5' >Pending for Review</Typography>
           <Typography fontFamily={"font-katibeh"} color='gray'  >You'll receive a mail once your details are  reviewed by us.</Typography>
-          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder' }}>
+          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder' }} onClick={()=>navigate("/dashboard")}>
           Okay
         </Button>
          </Stack>
