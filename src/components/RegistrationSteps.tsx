@@ -137,10 +137,12 @@ export default function RegistrationForm() {
           }}        />
         <Divider sx={{my:2}}/>
         <Typography fontFamily={"font-katibeh"} variant="h6" fontWeight={600} letterSpacing={1} sx={{ mt: 4, mb: 1 }}>Restaurant Photos</Typography>
-        <Stack flexWrap={'wrap'} maxHeight={'30vh'} alignItems={'center'}>
+        <Stack direction={'row'} justifyContent={'space-between'}>
         <PhotoUpload onChange={()=>{}} max={4} />
         <PhotoUpload onChange={()=>{}} max={4} />
         <PhotoUpload onChange={()=>{}} max={4} />
+        </Stack>
+        <Stack direction={'row'} justifyContent={'space-between'}>
         <PhotoUpload onChange={()=>{}} max={4} />
         <PhotoUpload onChange={()=>{}} max={4} />
         <PhotoUpload onChange={()=>{}} max={4} />
