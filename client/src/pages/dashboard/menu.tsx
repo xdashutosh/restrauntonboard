@@ -1,220 +1,115 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  IconButton,
-  Grid,
-  Fab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Switch,
-  FormControlLabel
-} from '@mui/material';
-import { Edit, Delete, Add } from '@mui/icons-material';
-import { useState } from 'react';
 
-interface MenuItem {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
-  description: string;
-  isAvailable: boolean;
-}
 
-const initialMenuItems: MenuItem[] = [
-  {
-    id: 1,
-    name: "Butter Chicken",
-    price: 350,
-    category: "Main Course",
-    description: "Tender chicken in rich tomato gravy",
-    isAvailable: true
-  },
-  {
-    id: 2,
-    name: "Paneer Tikka",
-    price: 250,
-    category: "Starters",
-    description: "Grilled cottage cheese with spices",
-    isAvailable: true
-  },
-  {
-    id: 3,
-    name: "Biryani",
-    price: 300,
-    category: "Main Course",
-    description: "Fragrant rice with spices and meat",
-    isAvailable: false
-  }
-];
+import React, { useState } from "react";
+import { Card, CardContent, Typography, IconButton, Box, Tabs, Tab, Switch, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack } from "@mui/material";
+import { Add, Fastfood } from "@mui/icons-material";
+import { VeganIcon } from "lucide-react";
 
-export default function Menu() {
-  const [menuItems, setMenuItems] = useState(initialMenuItems);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<MenuItem | null>(null);
-  
-  const handleDelete = (id: number) => {
-    setMenuItems(menuItems.filter(item => item.id !== id));
+const initialDishes = {
+  "North Indian": [
+    { name: "Palak Paneer", price: 299, image: "https://www.seriouseats.com/thmb/lhYY8CqBJoDwxj57KFAiY9pORhI=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/20220629-PalakPaneer-Amanda-Suarez-hero-a2fdf0f3ff5141dfbf44d3977678c578.JPG", inStock: true,dish_type:0 },
+    { name: "Shahi Paneer", price: 349, image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-j1XdLKn31g1i4xhsLYgRw0eiuPzxMgyHpw&s", inStock: true,dish_type:0 },
+    { name: "Dal Makhni", price: 249, image: "https://sinfullyspicy.com/wp-content/uploads/2015/03/4-1.jpg", inStock: true ,dish_type:0},
+    { name: "Aloo Gobhi", price: 149, image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlmS7qVvLisBtTcTn6QXhOcLLHqSYwRwFcbg&s", inStock: true,dish_type:0 },
+  ],
+  "South Indian": [
+    { name: "Dosa", price: 99, image: "dosa.jpg", inStock: true,dish_type:0 },
+    { name: "Idli", price: 79, image: "idli.jpg", inStock: true,dish_type:0 },
+    { name: "Vada", price: 69, image: "vada.jpg", inStock: false,dish_type:0 }
+  ],
+  "Chinese": [
+    { name: "Hakka Noodles", price: 199, image: "hakka_noodles.jpg", inStock: true,dish_type:0 },
+    { name: "Manchurian", price: 179, image: "manchurian.jpg", inStock: false ,dish_type:0}
+  ]
+};
+
+const Menu = () => {
+  const [selectedTab, setSelectedTab] = useState("North Indian");
+  const [dishes, setDishes] = useState(initialDishes);
+  const [open, setOpen] = useState(false);
+  const [newDish, setNewDish] = useState({ name: "", price: "", image: "", inStock: true });
+
+  const toggleStock = (category, index) => {
+    setDishes(prev => {
+      const updatedDishes = { ...prev };
+      updatedDishes[category][index].inStock = !updatedDishes[category][index].inStock;
+      return updatedDishes;
+    });
   };
 
-  const handleEdit = (item: MenuItem) => {
-    setEditItem(item);
-    setDialogOpen(true);
-  };
-
-  const handleAdd = () => {
-    setEditItem(null);
-    setDialogOpen(true);
-  };
-
-  const handleSave = (event: React.FormEvent) => {
-    event.preventDefault();
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
-    
-    const newItem: MenuItem = {
-      id: editItem?.id || menuItems.length + 1,
-      name: formData.get('name') as string,
-      price: Number(formData.get('price')),
-      category: formData.get('category') as string,
-      description: formData.get('description') as string,
-      isAvailable: Boolean(formData.get('isAvailable')),
-    };
-
-    if (editItem) {
-      setMenuItems(menuItems.map(item => 
-        item.id === editItem.id ? newItem : item
-      ));
-    } else {
-      setMenuItems([...menuItems, newItem]);
+  const addDish = () => {
+    if (newDish.name && newDish.price) {
+      setDishes(prev => ({
+        ...prev,
+        [selectedTab]: [...prev[selectedTab], { ...newDish, price: parseInt(newDish.price), image: "placeholder.jpg" }]
+      }));
+      setOpen(false);
+      setNewDish({ name: "", price: "", image: "", inStock: true });
     }
-    
-    setDialogOpen(false);
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>
-        Menu Items
-      </Typography>
-
-      <Grid container spacing={2}>
-        {menuItems.map((item) => (
-          <Grid item xs={12} key={item.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="h6">
-                    {item.name}
-                    {!item.isAvailable && (
-                      <Typography 
-                        component="span" 
-                        color="error" 
-                        sx={{ ml: 1, fontSize: '0.8rem' }}
-                      >
-                        (Unavailable)
-                      </Typography>
-                    )}
-                  </Typography>
-                  <Typography variant="h6">
-                    ₹{item.price}
-                  </Typography>
-                </Box>
-                
-                <Typography variant="body2" color="text.secondary">
-                  {item.description}
-                </Typography>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    {item.category}
-                  </Typography>
-                  <Box>
-                    <IconButton size="small" onClick={() => handleEdit(item)}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(item.id)}>
-                      <Delete />
-                    </IconButton>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center",mx:3 }}>
+      <Stack direction={'row'}>
+      <Tabs value={selectedTab} variant="scrollable"  onChange={(_, newValue) => setSelectedTab(newValue)} centered>
+        {Object.keys(initialDishes).map(category => (
+          <Tab key={category} label={category} value={category} />
         ))}
-      </Grid>
+      </Tabs>
+      
+      <IconButton
+              color="inherit"
+              edge="end"
+              onClick={() => setOpen(true)}
+              sx={{ bgcolor: '#EB8041', borderRadius: 2,color:'white' }}
+            >
+              <Add  />
+            </IconButton> 
+              </Stack>
+      <Card sx={{ width: "100%", p: 1, borderRadius: 3,boxShadow:'none',mt:2 }} variant="outlined">
+        <Typography fontSize={"larger"} fontFamily={"font-katibeh"} sx={{ fontWeight: "bold", display: "flex", alignItems: "center", gap: 1 }}>
+          <Fastfood sx={{ color: "#E07A5F" }} /> Item Stock List
+        </Typography>
+        <CardContent >
+          {dishes[selectedTab].map((dish, index) => (
+            <Box key={index} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 2, borderBottom: "3px solid #eee" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <img src={dish.image} alt={dish.name} width={60}   style={{ borderRadius: "20%",height:"70px" }} />
+                <Box>
+                  <Stack direction={'row'} gap={1}>
+                  <Typography fontFamily={"Poppins"} sx={{ fontWeight: "bold" }}>{dish.name}</Typography>
+                   {dish?.dish_type==0?
 
-      <Fab 
-        color="primary" 
-        sx={{ position: 'fixed', bottom: 72, right: 16 }}
-        onClick={handleAdd}
-      >
-        <Add />
-      </Fab>
+                     <img src="https://i.pinimg.com/736x/e4/1f/f3/e41ff3b10a26b097602560180fb91a62.jpg"  width={20} height={20} style={{ borderRadius: "20%" }} />:
+                  <img src="https://cdn.vectorstock.com/i/500p/00/43/non-vegetarian-sign-veg-logo-symbol-vector-50890043.jpg"  width={20} height={20} style={{ borderRadius: "20%" }} />
+                  
+                   }
+                  </Stack>
+                  <Typography fontFamily={"font-katibeh"} sx={{ color: "green" }}>₹{dish.price}</Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center",flexDirection:'column' }}>
+                <Typography fontFamily={"font-katibeh"} sx={{ fontSize: "0.85rem" }}>In Stock</Typography>
+                <Switch checked={dish.inStock} onChange={() => toggleStock(selectedTab, index)} color="warning" />
+              </Box>
+            </Box>
+          ))}
+        </CardContent>
+      </Card>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-        <form onSubmit={handleSave}>
-          <DialogTitle>
-            {editItem ? 'Edit Menu Item' : 'Add Menu Item'}
-          </DialogTitle>
-          <DialogContent>
-            <TextField
-              name="name"
-              label="Item Name"
-              fullWidth
-              margin="normal"
-              defaultValue={editItem?.name}
-              required
-            />
-            <TextField
-              name="price"
-              label="Price"
-              type="number"
-              fullWidth
-              margin="normal"
-              defaultValue={editItem?.price}
-              required
-            />
-            <TextField
-              name="category"
-              label="Category"
-              fullWidth
-              margin="normal"
-              defaultValue={editItem?.category}
-              required
-            />
-            <TextField
-              name="description"
-              label="Description"
-              fullWidth
-              margin="normal"
-              multiline
-              rows={2}
-              defaultValue={editItem?.description}
-              required
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  name="isAvailable"
-                  defaultChecked={editItem?.isAvailable ?? true}
-                />
-              }
-              label="Available"
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="contained">Save</Button>
-          </DialogActions>
-        </form>
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Add New Dish</DialogTitle>
+        <DialogContent>
+          <TextField label="Dish Name" fullWidth margin="dense" value={newDish.name} onChange={e => setNewDish({ ...newDish, name: e.target.value })} />
+          <TextField label="Price" type="number" fullWidth margin="dense" value={newDish.price} onChange={e => setNewDish({ ...newDish, price: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={addDish}>Add</Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
-}
+};
+
+export default Menu;

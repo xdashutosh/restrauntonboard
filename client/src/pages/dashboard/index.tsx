@@ -11,40 +11,37 @@ import {
   BottomNavigationAction,
   Paper,
   Switch as MuiSwitch,
-  FormControlLabel
+  FormControlLabel,
+  Stack
 } from '@mui/material';
 import { 
   Menu as MenuIcon,
   Home,
-  Assessment,
-  ShoppingCart,
   RestaurantMenu,
-  Feedback
+  HomeOutlined,
+  AssessmentOutlined,
+  CompareArrowsOutlined,
+  StarOutline
 } from '@mui/icons-material';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
-import { toggleOnline } from '@/store/restaurantSlice';
 import DashboardDrawer from '@/components/DashboardDrawer';
 import HomePage from './home';
 import ReportsPage from './reports';
 import OrdersPage from './orders';
 import MenuPage from './menu';
 import FeedbackPage from './feedback';
+import Closer from '../Closer';
 
 const navItems = [
-  { label: 'Home', icon: <Home />, path: '/dashboard' },
-  { label: 'Reports', icon: <Assessment />, path: '/dashboard/reports' },
-  { label: 'Orders', icon: <ShoppingCart />, path: '/dashboard/orders' },
+  { label: 'Home', icon: <HomeOutlined />, path: '/dashboard' },
+  { label: 'Reports', icon: <AssessmentOutlined />, path: '/dashboard/reports' },
+  { label: 'Orders', icon: <CompareArrowsOutlined />, path: '/dashboard/orders' },
   { label: 'Menu', icon: <RestaurantMenu />, path: '/dashboard/menu' },
-  { label: 'Feedback', icon: <Feedback />, path: '/dashboard/feedback' },
+  { label: 'Feedback', icon: <StarOutline />, path: '/dashboard/feedback' },
 ];
 
 export default function Dashboard() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { isOnline } = useSelector((state: RootState) => state.restaurant);
 
   const currentPath = location.pathname;
   const currentTabIndex = navItems.findIndex(item => 
@@ -53,64 +50,85 @@ export default function Dashboard() {
   );
 
   return (
-    <Box sx={{ pb: 7, minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static">
-        <Toolbar>
-          <FormControlLabel
-            control={
-              <MuiSwitch
-                checked={isOnline}
-                onChange={() => dispatch(toggleOnline())}
-                color="default"
-              />
-            }
-            label={isOnline ? "Online" : "Offline"}
-            sx={{ mr: 'auto' }}
-          />
-          <IconButton
-            color="inherit"
-            edge="end"
-            onClick={() => setDrawerOpen(true)}
-          >
-            <MenuIcon />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+    <Box sx={{ pb: 7, minHeight: '100vh', bgcolor:'whitesmoke' }}>
+    
+   
 
-      <Box sx={{ mt: 2, px: 2 }}>
+      <Box sx={{ mt: 2,  }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/menu" element={<MenuPage />} />
           <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/closer" element={<Closer />} />
         </Routes>
       </Box>
 
       <Paper 
-        sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }} 
-        elevation={3}
-      >
-        <BottomNavigation
-          value={currentTabIndex}
-          onChange={(_, newValue) => {
-            navigate(navItems[newValue].path);
-          }}
-        >
-          {navItems.map((item) => (
-            <BottomNavigationAction
-              key={item.path}
-              label={item.label}
-              icon={item.icon}
-            />
-          ))}
-        </BottomNavigation>
-      </Paper>
-
-      <DashboardDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+  sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, borderRadius: '16px 16px 0 0', overflow: 'hidden' }} 
+  elevation={3}
+>
+  <BottomNavigation
+    value={currentTabIndex}
+    onChange={(_, newValue) => {
+      navigate(navItems[newValue].path);
+    }}
+    sx={{
+      bgcolor: '#FFFFFF',
+      height: '65px',
+      display: 'flex',
+      justifyContent: 'space-around',
+    }}
+  >
+    {navItems.map((item, index) => (
+      <BottomNavigationAction
+        key={item.path}
+        label={item.label}
+        icon={item.icon}
+        sx={{
+          
+          color: currentTabIndex === index ? '#E87C4E' : '#676767',
+          fontSize: '12px',
+          fontWeight: currentTabIndex === index ? 'bold' : 'normal',
+          '& .MuiBottomNavigationAction-label': {
+            transition: 'none',
+            fontSize: currentTabIndex === index ? '10px' : '8px',
+          },
+          '& .MuiSvgIcon-root': {
+            fontSize: item?.label=="Orders"?'45px':"30px",
+            backgroundColor:item?.label=="Orders" ?'#EB8041':'',
+            color:item?.label=="Orders"? 'white':'',
+            borderRadius:item?.label=="Orders"? '50%':"0%",
+              
+          },
+          '&.Mui-selected': {
+            color: '#E87C4E',
+          },
+          '&:hover': {
+            color: '#E87C4E',
+          },
+          position: 'relative',
+          '&.Mui-selected::before': {
+            content: '""',
+            position: 'absolute',
+            top: '-10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '40px',
+            height: '40px',
+            backgroundColor: '#E87C4E',
+            borderRadius: '50%',
+            zIndex: -1,
+          }
+        }}
       />
+    ))}
+  </BottomNavigation>
+</Paper>
+
+
+
     </Box>
   );
 }

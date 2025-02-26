@@ -3,12 +3,12 @@ import type { Restaurant, Documents, WorkingDays } from '@shared/schema';
 
 interface RestaurantState {
   data: Restaurant | null;
-  isOnline: boolean; // Changed from boolean | null to just boolean
+  isOnline: boolean | null; // Changed from boolean | null to just boolean
 }
 
 const initialState: RestaurantState = {
   data: null,
-  isOnline: true,
+  isOnline: true ,
 };
 
 const MOCK_RESTAURANT: Restaurant = {
@@ -54,7 +54,7 @@ const restaurantSlice = createSlice({
   reducers: {
     setRestaurant: (state, action: PayloadAction<Restaurant>) => {
       state.data = action.payload;
-      state.isOnline = action.payload.isOnline;
+      state.isOnline = action?.payload?.isOnline;
     },
     toggleOnline: (state) => {
       state.isOnline = !state.isOnline;

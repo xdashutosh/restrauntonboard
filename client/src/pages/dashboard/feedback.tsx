@@ -1,111 +1,78 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Rating,
-  Avatar,
-  Divider,
-  List,
-  ListItem
-} from '@mui/material';
+import React, { useState } from "react";
+import { Card, CardContent, Typography, Box, Tabs, Tab, MenuItem, Select, Divider, Stack } from "@mui/material";
+import { Star } from "@mui/icons-material";
 
-interface FeedbackItem {
-  id: number;
-  customerName: string;
-  rating: number;
-  comment: string;
-  date: string;
-}
+const feedbackData = {
+  daily: [
+    { orderId: "#1234567890", total: 278, items: "1 x Dal Makhni, 4 x Tandoori Roti", rating: 5.0, delivery: 4.5, comment: "The food was very delicious and the delivery time was also quick. I’ll definitely try other dishes next time. Thanks!" },
+    { orderId: "#1234567891", total: 278, items: "1 x Aloo Gobhi, 4 x Tandoori Roti", rating: 4.0, delivery: 3.5, comment: "The food was very delicious and the delivery time was also quick. I’ll definitely try other dishes next time. Thanks!" }
+  ],
+  weekly: [
+    { orderId: "#1234567892", total: 350, items: "2 x Butter Naan, 1 x Paneer Butter Masala", rating: 4.8, delivery: 4.0, comment: "Great taste and fast service!" }
+  ],
+  monthly: [
+    { orderId: "#1234567893", total: 420, items: "1 x Shahi Paneer, 3 x Tandoori Roti", rating: 4.2, delivery: 4.1, comment: "Good food, but delivery was a bit late." }
+  ]
+};
 
-const mockFeedback: FeedbackItem[] = [
-  {
-    id: 1,
-    customerName: "Priya Sharma",
-    rating: 5,
-    comment: "Amazing food and quick delivery! The biryani was perfect.",
-    date: "2 days ago"
-  },
-  {
-    id: 2,
-    customerName: "Rajesh Kumar",
-    rating: 4,
-    comment: "Good food but delivery was a bit delayed. Overall satisfied.",
-    date: "3 days ago"
-  },
-  {
-    id: 3,
-    customerName: "Sneha Patel",
-    rating: 5,
-    comment: "Best restaurant in the area! Love the paneer dishes.",
-    date: "4 days ago"
-  },
-  {
-    id: 4,
-    customerName: "Amit Singh",
-    rating: 3,
-    comment: "Food was okay. Could improve the packaging.",
-    date: "1 week ago"
-  }
-];
-
-export default function Feedback() {
-  const averageRating = mockFeedback.reduce((acc, item) => acc + item.rating, 0) / mockFeedback.length;
-
+const Feedback = () => {
+  const [selectedTab, setSelectedTab] = useState("monthly");
+  const [dateRange, setDateRange] = useState("All Time");
+console.log(selectedTab,dateRange)
   return (
-    <Box>
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Overall Rating
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="h3">
-              {averageRating.toFixed(1)}
-            </Typography>
-            <Box>
-              <Rating value={averageRating} precision={0.5} readOnly />
-              <Typography variant="body2" color="text.secondary">
-                Based on {mockFeedback.length} reviews
-              </Typography>
+    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 2, width: "100%" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 400, mb: 2 }}>
+    
+        <Select   sx={{bgcolor:'#EAE9ED',border:'none',color:'#82818A',borderRadius:3,fontFamily:"font-katibeh"}}  value={selectedTab}  onChange={(e) => setSelectedTab(e.target.value)} size="small">
+          <MenuItem  value="daily" >Daily</MenuItem>
+          <MenuItem value="weekly">Weekly</MenuItem>
+          <MenuItem value="monthly">Monthly</MenuItem>
+        </Select>
+        
+        <Select value={dateRange} sx={{bgcolor:'#EAE9ED',border:'none',color:'#82818A',borderRadius:3}}  onChange={(e) => setDateRange(e.target.value)} size="small">
+          <MenuItem value="All Time">All Time</MenuItem>
+          <MenuItem value="Last 7 Days">Last 7 Days</MenuItem>
+          <MenuItem value="Last 30 Days">Last 30 Days</MenuItem>
+        </Select>
+      </Box>
+      {feedbackData[selectedTab]?.map((feedback, index) => (
+        <Card key={index} sx={{ width: "100%", mb: 2, borderRadius: 3, boxShadow: 'none' }} variant="outlined">
+          <CardContent sx={{textAlign:'center'}}>
+            <Box sx={{ display: "flex", justifyContent: "space-between",alignItems:'center',py:1 }}>
+              <Typography fontFamily={"font-katibeh"} variant="body1" sx={{color: "#666"}}>Order ID: {feedback.orderId}</Typography>
+              <Typography fontFamily={"font-katibeh"} fontWeight="bold">Bill Total: ₹{feedback.total}</Typography>
             </Box>
-          </Box>
-        </CardContent>
-      </Card>
+            <Divider/>
 
-      <Typography variant="h6" gutterBottom>
-        Recent Feedback
-      </Typography>
+            <Typography fontFamily={"font-katibeh"} sx={{ my: 2, color: "#666" }}>Items: <b>{feedback.items}</b></Typography>
 
-      <List>
-        {mockFeedback.map((feedback) => (
-          <ListItem key={feedback.id} disablePadding>
-            <Card sx={{ width: '100%', mb: 2 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                  <Avatar>
-                    {feedback.customerName.charAt(0)}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle1">
-                      {feedback.customerName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {feedback.date}
-                    </Typography>
-                  </Box>
-                </Box>
+            <Box sx={{ display: "flex", alignItems: "center", mt: 1,justifyContent:'space-between' }}>
 
-                <Rating value={feedback.rating} readOnly size="small" />
-                
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {feedback.comment}
-                </Typography>
-              </CardContent>
-            </Card>
-          </ListItem>
-        ))}
-      </List>
+            <Stack direction={'row'} alignItems={'center'} gap={1}>
+              <Typography fontFamily={"font-katibeh"} sx={{ color: "#666" }}>Rating:</Typography>
+              <Box sx={{p:"4px",bgcolor:'#FFA500',display:'flex',borderRadius:2}}>
+              <Star  sx={{ color: "white" }} />
+              <Typography fontFamily={"font-katibeh"} color="white" >{feedback.rating}</Typography>
+              </Box>
+            </Stack>
+
+              <Stack direction={'row'} alignItems={'center'} gap={1}>
+              <Typography sx={{ color: "#666", ml: 2 }} fontFamily={"font-katibeh"}>Delivery Boy:</Typography>
+              <Box sx={{p:"4px",bgcolor:'#FFA500',display:'flex',borderRadius:2}}>
+              <Star  sx={{ color: "white" }} />
+              <Typography fontFamily={"font-katibeh"} color="white" >{feedback.delivery}</Typography>
+              </Box>
+              </Stack>
+            </Box>
+            
+            <Typography fontFamily={"font-katibeh"} sx={{ mt: 1, fontStyle: "italic", color: "#444" }}>
+              "{feedback.comment}"
+            </Typography>
+          </CardContent>
+        </Card>
+      ))}
     </Box>
   );
-}
+};
+
+export default Feedback;

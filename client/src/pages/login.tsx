@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, CardContent, TextField, Button, Typography, Box } from '@mui/material';
+import { Card, CardContent, TextField, Button, Typography, Box, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { setPhoneNumber, generateOTP, verifyOTP } from '@/store/authSlice';
 import type { RootState } from '@/store/store';
@@ -12,7 +11,7 @@ export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
-  const [otpInput, setOtpInput] = useState('');
+  const [otpInput, setOtpInput] = useState(['', '', '', '']); // Four separate OTP inputs
   const [showOTP, setShowOTP] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
 
@@ -46,10 +45,27 @@ export default function Login() {
     setTimeLeft(120);
   };
 
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length <= 1 && !isNaN(Number(value))) {
+      const newOtpInput = [...otpInput];
+      newOtpInput[index] = value;
+      setOtpInput(newOtpInput);
 
-  const handleVerifyOTP = () => {
-    dispatch(verifyOTP(otpInput));
+      // Move to next box automatically
+      if (value && index < 3) {
+        document.getElementById(`otp-${index + 1}`)?.focus();
+      }
+
+      // Trigger verification when last box is filled
+      if (index === 3 && value.length === 1) {
+        handleVerifyOTP(newOtpInput.join(''));
+      }
+    }
+  };
+
+  const handleVerifyOTP = (otp: string) => {
+    dispatch(verifyOTP(otp));
+    const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
     if (isAuthenticated) {
       toast({
         title: "Success",
@@ -69,22 +85,32 @@ export default function Login() {
     <Box sx={{ 
       minHeight: '100vh', 
       display: 'flex', 
-      alignItems: 'center', 
+      alignItems: 'end', 
       justifyContent: 'center',
-      p: 2,
-      bgcolor: 'background.default'
+      background: `linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.3), transparent), 
+      url(https://rishikeshcamps.in/wp-content/uploads/2023/05/restaarant.jpg)`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
     }}>
-      <Card sx={{ maxWidth: 400, width: '100%' }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom align="center">
-            Restaurant Login
-          </Typography>
-          
+      <Card sx={{ width: '100%', height: '50vh', borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Stack>
+            <Typography fontFamily={"font-katibeh"} fontSize={40} gutterBottom>
+              Partner with <b style={{ color: '#EB8041' }}>OLF</b>
+            </Typography>
+            <Typography marginTop={-2} fontFamily={"font-katibeh"} fontSize={40} gutterBottom>
+              Store & Serve More!
+            </Typography>
+            <Typography fontFamily={"font-katibeh"} letterSpacing={0.5} color='gray'>
+              Login to manage orders, update menus, and serve passengers with ease.
+            </Typography>
+          </Stack>
+
           {!showOTP ? (
             <>
               <TextField
                 fullWidth
-                label="Phone Number"
+                label="mobile Number"
                 variant="outlined"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -96,36 +122,34 @@ export default function Login() {
                 fullWidth 
                 variant="contained" 
                 onClick={handleSendOTP}
-                sx={{ mt: 2 }}
+                sx={{ mt: 2, p: 1, fontSize: 'larger', borderRadius: 2, bgcolor: '#EB8041' }}
               >
-                Send OTP
+                Login
               </Button>
             </>
           ) : (
             <>
-              <TextField
-                fullWidth
-                label="Enter OTP"
-                variant="outlined"
-                value={otpInput}
-                onChange={(e) => setOtpInput(e.target.value)}
-                type="number"
-                margin="normal"
-                inputProps={{ maxLength: 4 }}
-              />
+              <Box sx={{ display: 'flex',justifyContent:'center',mt:4,gap:2 }}>
+                {otpInput.map((digit, index) => (
+                  <TextField
+                    key={index}
+                    id={`otp-${index}`}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    variant="outlined"
+                    type="tel"
+                    inputProps={{ maxLength: 1, style: { textAlign: 'center' } }}
+                    sx={{ width: '4rem',borderRadius:'20px' }}
+                  />
+                ))}
+              </Box>
+              {timeLeft != 0 &&
               <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 1 }}>
                 Time remaining: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
               </Typography>
-              <Button 
-                fullWidth 
-                variant="contained" 
-                onClick={handleVerifyOTP}
-                disabled={timeLeft === 0}
-                sx={{ mt: 2 }}
-              >
-                Verify OTP
-              </Button>
-              {timeLeft === 0 && (
+              }
+
+              {timeLeft == 0 && (
                 <Button
                   fullWidth
                   variant="text"

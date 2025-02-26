@@ -1,27 +1,21 @@
 import { useState } from 'react';
 import {
-  Stepper,
-  Step,
-  StepLabel,
   TextField,
   Button,
   Box,
-  FormControlLabel,
   Checkbox,
+  FormControlLabel,
   FormGroup,
   Typography,
   Autocomplete,
+  Divider,
+  Drawer,
+  Stack
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { MobileTimePicker } from '@mui/x-date-pickers/MobileTimePicker';
 import PhotoUpload from './PhotoUpload';
-import { useForm, Controller } from 'react-hook-form';
-import { useDispatch } from 'react-redux';
-import { setRestaurant } from '@/store/restaurantSlice';
-import type { InsertRestaurant, WorkingDays } from '@shared/schema';
-import { useToast } from '@/hooks/use-toast';
-import { useLocation } from 'wouter';
 
 const INDIAN_STATIONS = [
   'Mumbai Central',
@@ -33,383 +27,255 @@ const INDIAN_STATIONS = [
   // Add more stations...
 ];
 
-const steps = ['Basic Details', 'Photos', 'Contact Details', 'Working Hours', 'Documents'];
-
-export default function RegistrationSteps() {
-  const [activeStep, setActiveStep] = useState(0);
-  const dispatch = useDispatch();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
-
-  const { control, handleSubmit, watch, setValue } = useForm<InsertRestaurant>({
-    defaultValues: {
-      workingDays: {
-        monday: false,
-        tuesday: false,
-        wednesday: false,
-        thursday: false,
-        friday: false,
-        saturday: false,
-        sunday: false,
-      } as WorkingDays,
-      documents: {
-        gst: '',
-        fssai: '',
-        idProof: '',
-        addressProof: '',
-      },
-      isOnline: true,
-    }
+export default function RegistrationForm() {
+  const [workingDays, setWorkingDays] = useState({
+    monday: false,
+    tuesday: false,
+    wednesday: false,
+    thursday: false,
+    friday: false,
+    saturday: false,
+    sunday: false
   });
-  const sameAsPhone = watch('mobileNumber') === watch('whatsappNumber');
-
-  const handleNext = () => {
-    setActiveStep((prevStep) => prevStep + 1);
+  const [openingTime, setOpeningTime] = useState(null);
+  const [closingTime, setClosingTime] = useState(null);
+  const [whatsappSameAsPhone, setWhatsappSameAsPhone] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [documents, setDocuments] = useState({
+    gst: '',
+    fssai: '',
+    idProof: '',
+    addressProof: ''
+  });
+  const [drawerOpen, setDrawerOpen] = useState(false); // State for drawer
+  const toggleDrawer = (open: boolean) => {
+    setDrawerOpen(open);
   };
 
-  const handleBack = () => {
-    setActiveStep((prevStep) => prevStep - 1);
+  const handleWorkingDayChange = (day: string, checked: boolean) => {
+    setWorkingDays({ ...workingDays, [day]: checked });
   };
 
-  const onSubmit = (data: InsertRestaurant) => {
-    dispatch(setRestaurant(data as any));
-    toast({
-      title: "Success",
-      description: "Restaurant registered successfully"
+  const handleSelectAllDays = (checked: boolean) => {
+    setWorkingDays({
+      monday: checked,
+      tuesday: checked,
+      wednesday: checked,
+      thursday: checked,
+      friday: checked,
+      saturday: checked,
+      sunday: checked
     });
-    setLocation('/dashboard');
-  };
-
-  const renderStepContent = (step: number) => {
-    switch (step) {
-      case 0:
-        return (
-          <Box sx={{ mt: 2 }}>
-            <Controller
-              name="name"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Restaurant Name"
-                  margin="normal"
-                />
-              )}
-            />
-            <Controller
-              name="ownerName"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Owner Name"
-                  margin="normal"
-                />
-              )}
-            />
-            <Controller
-              name="location"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Autocomplete
-                  {...field}
-                  options={INDIAN_STATIONS}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Station Location" margin="normal" />
-                  )}
-                  onChange={(_, value) => field.onChange(value)}
-                />
-              )}
-            />
-            <Controller
-              name="minOrderAmount"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Minimum Order Amount"
-                  type="number"
-                  margin="normal"
-                />
-              )}
-            />
-          </Box>
-        );
-      case 1:
-        return (
-          <Controller
-            name="photos"
-            control={control}
-            render={({ field }) => (
-              <PhotoUpload
-                value={field.value}
-                onChange={field.onChange}
-                max={4}
-              />
-            )}
-          />
-        );
-      case 2:
-        return (
-          <Box sx={{ mt: 2 }}>
-            <Controller
-              name="email"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Email Address"
-                  type="email"
-                  margin="normal"
-                />
-              )}
-            />
-            <Controller
-              name="mobileNumber"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Mobile Number"
-                  type="tel"
-                  margin="normal"
-                />
-              )}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={sameAsPhone}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      // Set whatsapp number same as mobile
-                      control.setValue('whatsappNumber', watch('mobileNumber'));
-                    }
-                  }}
-                />
-              }
-              label="Same as WhatsApp"
-            />
-            {!sameAsPhone && (
-              <Controller
-                name="whatsappNumber"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="WhatsApp Number"
-                    type="tel"
-                    margin="normal"
-                  />
-                )}
-              />
-            )}
-          </Box>
-        );
-      case 3:
-        return (
-          <Box sx={{ mt: 2 }}>
-            <Controller
-              name="workingDays"
-              control={control}
-              defaultValue={{
-                monday: false,
-                tuesday: false,
-                wednesday: false,
-                thursday: false,
-                friday: false,
-                saturday: false,
-                sunday: false,
-              } as WorkingDays}
-              render={({ field }) => (
-                <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        onChange={(e) => {
-                          const newValue = {
-                            monday: e.target.checked,
-                            tuesday: e.target.checked,
-                            wednesday: e.target.checked,
-                            thursday: e.target.checked,
-                            friday: e.target.checked,
-                            saturday: e.target.checked,
-                            sunday: e.target.checked,
-                          };
-                          field.onChange(newValue);
-                        }}
-                      />
-                    }
-                    label="Select All"
-                  />
-                  {Object.entries(field.value || {}).map(([day, checked]) => (
-                    <FormControlLabel
-                      key={day}
-                      control={
-                        <Checkbox
-                          checked={checked}
-                          onChange={(e) => {
-                            field.onChange({
-                              ...(field.value || {}),
-                              [day]: e.target.checked,
-                            });
-                          }}
-                        />
-                      }
-                      label={day.charAt(0).toUpperCase() + day.slice(1)}
-                    />
-                  ))}
-                </FormGroup>
-              )}
-            />
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                <Controller
-                  name="openingTime"
-                  control={control}
-                  render={({ field }) => (
-                    <MobileTimePicker
-                      label="Opening Time"
-                      value={field.value ? new Date(`2024-01-01T${field.value}`) : null}
-                      onChange={(newValue) => {
-                        const timeString = newValue?.toLocaleTimeString('en-US', {
-                          hour12: false,
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        });
-                        field.onChange(timeString);
-                      }}
-                    />
-                  )}
-                />
-                <Controller
-                  name="closingTime"
-                  control={control}
-                  render={({ field }) => (
-                    <MobileTimePicker
-                      label="Closing Time"
-                      value={field.value ? new Date(`2024-01-01T${field.value}`) : null}
-                      onChange={(newValue) => {
-                        const timeString = newValue?.toLocaleTimeString('en-US', {
-                          hour12: false,
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        });
-                        field.onChange(timeString);
-                      }}
-                    />
-                  )}
-                />
-              </Box>
-            </LocalizationProvider>
-          </Box>
-        );
-      case 4:
-        return (
-          <Box sx={{ mt: 2 }}>
-            <Controller
-              name="documents"
-              control={control}
-              defaultValue={{
-                gst: '',
-                fssai: '',
-                idProof: '',
-                addressProof: '',
-              }}
-              render={({ field: { value, onChange } }) => (
-                <Box>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Upload Documents
-                  </Typography>
-                  <PhotoUpload
-                    value={value?.gst || ''}
-                    onChange={(newValue) =>
-                      onChange({ ...value, gst: newValue as string })
-                    }
-                    label="GST Certificate"
-                    max={1}
-                  />
-                  <PhotoUpload
-                    value={value?.fssai || ''}
-                    onChange={(newValue) =>
-                      onChange({ ...value, fssai: newValue as string })
-                    }
-                    label="FSSAI License"
-                    max={1}
-                  />
-                  <PhotoUpload
-                    value={value?.idProof || ''}
-                    onChange={(newValue) =>
-                      onChange({ ...value, idProof: newValue as string })
-                    }
-                    label="ID Proof"
-                    max={1}
-                  />
-                  <PhotoUpload
-                    value={value?.addressProof || ''}
-                    onChange={(newValue) =>
-                      onChange({ ...value, addressProof: newValue as string })
-                    }
-                    label="Address Proof"
-                    max={1}
-                  />
-                </Box>
-              )}
-            />
-          </Box>
-        );
-      default:
-        return null;
-    }
   };
 
   return (
-    <Box sx={{ width: '100%', p: 3 }}>
-      <Stepper activeStep={activeStep} alternativeLabel>
-        {steps.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {renderStepContent(activeStep)}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-          <Button
-            disabled={activeStep === 0}
-            onClick={handleBack}
-          >
-            Back
-          </Button>
-          {activeStep === steps.length - 1 ? (
-            <Button
-              variant="contained"
-              type="submit"
-            >
-              Submit
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={handleNext}
-            >
-              Next
-            </Button>
+    <Box sx={{ width: '100%', p: 3, borderRadius: '12px', background: '#FFF4F1',boxShadow:'none' }}>
+      <Typography fontFamily={"font-katibeh"} variant="h4" ><b style={{color:'#FF6B3F'}}>Add</b> Restaurant</Typography>
+      <Typography fontFamily={"font-katibeh"} sx={{ color: 'gray', mb: 2}}>Provide basic details like restaurant name, location, owner name, and contact information etc.</Typography>
+      <Divider/>
+      <Box component="form" noValidate autoComplete="off" sx={{mt:2}}>
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mb: 1 }}>Basic Details</Typography>
+        <TextField 
+          fullWidth
+          label="Restaurant Name"
+          placeholder="Enter your restaurant name"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3, // Apply border-radius
+              bgcolor:'white'
+            },
+            mb:2
+          }}
+        />
+        <TextField 
+          fullWidth
+          label="Owner Name"
+          placeholder="Enter your name"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3, // Apply border-radius
+              bgcolor:'white'
+            },
+            mb:2
+          }}        />
+        <Autocomplete
+          options={INDIAN_STATIONS}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Station Location"
+              placeholder="Select station location"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 3, // Apply border-radius
+                  bgcolor:'white'
+                },
+                mb:2
+              }}            />
           )}
-        </Box>
-      </form>
+        />
+        <TextField 
+          fullWidth
+          label="Minimum Order Amount"
+          placeholder="Select minimum order amount"
+          type="number"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3, // Apply border-radius
+              bgcolor:'white'
+            },
+            mb:2
+          }}        />
+        <Divider sx={{my:2}}/>
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Restaurant Photos</Typography>
+        <PhotoUpload max={4} />
+        <Divider sx={{my:4}}/>
+        
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Owner Contact Details</Typography>
+        <TextField 
+          fullWidth
+          label="Email Address"
+          placeholder="Enter your email address"
+          type="email"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3, // Apply border-radius
+              bgcolor:'white'
+            },
+            mb:2
+          }}        />
+        <TextField 
+          fullWidth
+          label="Mobile Number"
+          placeholder="Enter your mobile number"
+          type="tel"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3, // Apply border-radius
+              bgcolor:'white'
+            },
+            mb:2
+          }}          onChange={(e) => setMobileNumber(e.target.value)}
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={whatsappSameAsPhone}
+              onChange={(e) => setWhatsappSameAsPhone(e.target.checked)}
+            />
+          }
+          label="WhatsApp number is same as above"
+        />
+        {!whatsappSameAsPhone && (
+          <TextField 
+            fullWidth
+            label="WhatsApp Number"
+            placeholder="Enter WhatsApp number"
+            type="tel"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3, // Apply border-radius
+                bgcolor:'white'
+              },
+              mb:2
+            }}            onChange={(e) => setWhatsappNumber(e.target.value)}
+          />
+        )}
+
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Select Working Days & Time</Typography>
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Checkbox
+                onChange={(e) => handleSelectAllDays(e.target.checked)}
+              />
+            }
+            label="Select All"
+          />
+          {Object.entries(workingDays).map(([day, checked]) => (
+            
+            <FormControlLabel
+              key={day}
+              control={
+                <Checkbox
+                  checked={checked}
+                  onChange={(e) => handleWorkingDayChange(day, e.target.checked)}
+                />
+              }
+              label={day.charAt(0).toUpperCase() + day.slice(1)}
+            />
+          ))}
+        </FormGroup>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+            <MobileTimePicker
+              label="Opening Time"
+              value={openingTime}
+              onChange={(newValue) => setOpeningTime(newValue)}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 3, // Apply border-radius
+                  bgcolor:'white'
+                },
+                mb:2
+              }}
+            />
+            <MobileTimePicker
+              label="Closing Time"
+              value={closingTime}
+              onChange={(newValue) => setClosingTime(newValue)}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 3, // Apply border-radius
+                  bgcolor:'white'
+                },
+                mb:2
+              }}            />
+          </Box>
+        </LocalizationProvider>
+
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Address Proof & Documents</Typography>
+        <PhotoUpload label="Upload your GST Certificate" max={1} />
+        <PhotoUpload label="Upload your FSSAI" max={1} />
+        <PhotoUpload label="Upload your ID Proof" max={1} />
+        <PhotoUpload label="Upload your Address Proof" max={1} />
+
+        <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F' }}>
+          Submit
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F' }}
+          onClick={() => toggleDrawer(true)} // Open drawer on click
+        >
+          Open Drawer
+        </Button>
+
+        <Drawer
+          anchor="bottom"
+          open={drawerOpen}
+          sx={{
+            '& .MuiDrawer-paper': {
+              height: '40vh', // 40% of viewport height
+              borderRadius: '40px 40px 0 0', // Rounded top corners
+              bgcolor: '#FFF4F1', // Same background as form
+            },
+          }}
+        >
+         <Stack justifyContent={'center'} alignItems={'center'} height={'100%'} p={4} width={'100%'} textAlign={'center'}>
+          <img src='https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRVKyAHIjNlFhGsr9sugvi1_4G868kL9yjR1nbh6SYQcICe2ZUc' height={150} width={150}/>
+          <Typography fontFamily={"font-katibeh"} variant='h5' >Pending for Review</Typography>
+          <Typography fontFamily={"font-katibeh"} color='gray'  >You'll receive a mail once your details are  reviewed by us.</Typography>
+          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder' }}>
+          Okay
+        </Button>
+         </Stack>
+         
+        </Drawer>
+      </Box>
     </Box>
   );
 }

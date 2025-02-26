@@ -6,6 +6,7 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
+  Divider,
 } from '@mui/material';
 import {
   Person,
@@ -13,8 +14,18 @@ import {
   Report,
   Feedback,
   ShoppingCart,
+  Watch,
+  Money,
+  Discount,
+  CalendarViewWeekRounded,
+  Group,
+  Chat,
+  Person4Rounded,
+  Compare,
+  CompareArrows,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { WatchIcon } from 'lucide-react';
 
 interface DashboardDrawerProps {
   open: boolean;
@@ -22,11 +33,13 @@ interface DashboardDrawerProps {
 }
 
 const drawerItems = [
-  { text: 'Profile', icon: <Person />, path: '/dashboard/profile' },
-  { text: 'Revenue', icon: <AttachMoney />, path: '/dashboard/revenue' },
-  { text: 'Complaints', icon: <Report />, path: '/dashboard/complaints' },
-  { text: 'Feedback', icon: <Feedback />, path: '/dashboard/feedback' },
-  { text: 'All Orders', icon: <ShoppingCart />, path: '/dashboard/orders' },
+  { text: 'Vendor Profile', icon: <Person4Rounded />, path: '/dashboard/profile' },
+  { text: 'Order History', icon: <CompareArrows />, path: '/dashboard/history' },
+  { text: 'Payment History', icon: <Money/>, path: '/dashboard/money' },
+  { text: 'Offers', icon: <Discount />, path: '/dashboard/revenue' },
+  { text: 'Scheduled Closer', icon: <CalendarViewWeekRounded />, path: '/dashboard/closer' },
+  { text: 'Delivery Boy', icon: <Group />, path: '/dashboard/delboy' },
+  { text: 'Customer Interaction', icon: <Chat/>, path: '/dashboard/chat' },
 ];
 
 export default function DashboardDrawer({ open, onClose }: DashboardDrawerProps) {
@@ -38,18 +51,19 @@ export default function DashboardDrawer({ open, onClose }: DashboardDrawerProps)
       open={open}
       onClose={onClose}
     >
-      <List sx={{ width: 250 }}>
+      <List sx={{p:1,mt:4,display:'flex',flexDirection:'column',gap:2 }}>
         {drawerItems.map((item) => (
           <ListItem
-            button
+            sx={{borderBottom:'1px solid #eee',py:1,gap:-1}}
             key={item.text}
             onClick={() => {
               navigate(item.path);
               onClose();
             }}
           >
-            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemIcon sx={{color:'#EB8041'}}>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />
+        
           </ListItem>
         ))}
       </List>
