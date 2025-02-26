@@ -1,5 +1,5 @@
 import { Box, Typography, IconButton } from '@mui/material';
-import { AddCircle } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import React from 'react';
 
 interface PhotoUploadProps {
@@ -37,14 +37,14 @@ export default function PhotoUpload({ value, onChange, max = 1, label }: PhotoUp
   const renderUploadBox = () => (
     <Box
       sx={{
-        width: 150,
-        height: 150,
-        border: '2px dashed grey',
+        width: 100,
+        height: 100,
         display: 'flex',
+        bgcolor:'#EAE9ED',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        borderRadius: 1,
+        borderRadius: 4,
       }}
     >
       <input
@@ -56,7 +56,7 @@ export default function PhotoUpload({ value, onChange, max = 1, label }: PhotoUp
         multiple={max > 1}
       />
       <IconButton component="label" htmlFor={`photo-upload-${label || 'main'}`}>
-        <AddCircle sx={{ fontSize: 40 }} />
+        <Add sx={{ fontSize: 40 }} />
       </IconButton>
     </Box>
   );

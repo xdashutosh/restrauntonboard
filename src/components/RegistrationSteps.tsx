@@ -70,13 +70,17 @@ export default function RegistrationForm() {
     });
   };
 
+  const handlesubmit =()=>{
+    toggleDrawer(true)
+  }
+
   return (
     <Box sx={{ width: '100%', p: 3, borderRadius: '12px', background: '#FFF4F1',boxShadow:'none' }}>
       <Typography fontFamily={"font-katibeh"} variant="h4" ><b style={{color:'#FF6B3F'}}>Add</b> Restaurant</Typography>
       <Typography fontFamily={"font-katibeh"} sx={{ color: 'gray', mb: 2}}>Provide basic details like restaurant name, location, owner name, and contact information etc.</Typography>
       <Divider/>
       <Box component="form" noValidate autoComplete="off" sx={{mt:2}}>
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mb: 1 }}>Basic Details</Typography>
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mb: 1 }} fontWeight={600} letterSpacing={1}>Basic Details</Typography>
         <TextField 
           fullWidth
           label="Restaurant Name"
@@ -129,11 +133,18 @@ export default function RegistrationForm() {
             mb:2
           }}        />
         <Divider sx={{my:2}}/>
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Restaurant Photos</Typography>
+        <Typography fontFamily={"font-katibeh"} variant="h6" fontWeight={600} letterSpacing={1} sx={{ mt: 4, mb: 1 }}>Restaurant Photos</Typography>
+        <Stack flexWrap={'wrap'} maxHeight={'30vh'} alignItems={'center'}>
         <PhotoUpload onChange={()=>{}} max={4} />
+        <PhotoUpload onChange={()=>{}} max={4} />
+        <PhotoUpload onChange={()=>{}} max={4} />
+        <PhotoUpload onChange={()=>{}} max={4} />
+        <PhotoUpload onChange={()=>{}} max={4} />
+        <PhotoUpload onChange={()=>{}} max={4} />
+        </Stack>
         <Divider sx={{my:4}}/>
         
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Owner Contact Details</Typography>
+        <Typography fontFamily={"font-katibeh"} variant="h6" fontWeight={600} letterSpacing={1} sx={{ mt: 4, mb: 1 }}>Owner Contact Details</Typography>
         <TextField 
           fullWidth
           label="Email Address"
@@ -184,8 +195,10 @@ export default function RegistrationForm() {
           />
         )}
 
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Select Working Days & Time</Typography>
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }} fontWeight={600} letterSpacing={1}>Select Working Days & Time</Typography>
         <FormGroup>
+         
+          <Stack  maxHeight={'22vh'}  flexWrap={'wrap'}>
           <FormControlLabel
             control={
               <Checkbox
@@ -197,16 +210,17 @@ export default function RegistrationForm() {
           {Object.entries(workingDays).map(([day, checked]) => (
             
             <FormControlLabel
-              key={day}
-              control={
+            key={day}
+            control={
                 <Checkbox
                   checked={checked}
                   onChange={(e) => handleWorkingDayChange(day, e.target.checked)}
                 />
               }
               label={day.charAt(0).toUpperCase() + day.slice(1)}
-            />
-          ))}
+              />
+            ))}
+            </Stack>
         </FormGroup>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
@@ -236,32 +250,39 @@ export default function RegistrationForm() {
           </Box>
         </LocalizationProvider>
 
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Address Proof & Documents</Typography>
-        <PhotoUpload onChange={()=>{}} label="Upload your GST Certificate" max={1} />
-        <PhotoUpload onChange={()=>{}} label="Upload your FSSAI" max={1} />
-        <PhotoUpload onChange={()=>{}} label="Upload your ID Proof" max={1} />
-        <PhotoUpload onChange={()=>{}} label="Upload your Address Proof" max={1} />
+        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }} fontWeight={600} letterSpacing={1}>Address Proof & Documents</Typography>
+        <Stack gap={2}>
+        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Typography sx={{wordSpacing:4}}>Upload your <b>GST Certificate</b></Typography>
+          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
+        </Stack>
+        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Typography sx={{wordSpacing:4}}>Upload your <b>FSSAI</b></Typography>
+          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
+        </Stack>
+        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Typography sx={{wordSpacing:4}}>Upload your <b>ID Proof</b></Typography>
+          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
+        </Stack>
+        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Typography sx={{wordSpacing:4}}>Upload your <b>Address Proof</b></Typography>
+          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
+        </Stack>
+        </Stack>
+        
 
-        <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F' }}>
+        <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder',fontSize:'medium' }} onClick={handlesubmit}>
           Submit
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          fullWidth
-          sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F' }}
-          onClick={() => toggleDrawer(true)} // Open drawer on click
-        >
-          Open Drawer
-        </Button>
+      
 
         <Drawer
           anchor="bottom"
           open={drawerOpen}
           sx={{
             '& .MuiDrawer-paper': {
-              height: '40vh', // 40% of viewport height
-              borderRadius: '40px 40px 0 0', // Rounded top corners
+              height: '45vh', // 40% of viewport height
+              borderRadius: '50px 50px 0 0', // Rounded top corners
               bgcolor: '#FFF4F1', // Same background as form
             },
           }}
