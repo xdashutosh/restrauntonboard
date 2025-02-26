@@ -130,7 +130,7 @@ export default function RegistrationForm() {
           }}        />
         <Divider sx={{my:2}}/>
         <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Restaurant Photos</Typography>
-        <PhotoUpload max={4} />
+        <PhotoUpload onChange={()=>{}} max={4} />
         <Divider sx={{my:4}}/>
         
         <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Owner Contact Details</Typography>
@@ -213,7 +213,7 @@ export default function RegistrationForm() {
             <MobileTimePicker
               label="Opening Time"
               value={openingTime}
-              onChange={(newValue) => setOpeningTime(newValue)}
+              onChange={(newValue:any) => setOpeningTime(newValue)}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 3, // Apply border-radius
@@ -225,7 +225,7 @@ export default function RegistrationForm() {
             <MobileTimePicker
               label="Closing Time"
               value={closingTime}
-              onChange={(newValue) => setClosingTime(newValue)}
+              onChange={(newValue:any) => setClosingTime(newValue)}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 3, // Apply border-radius
@@ -237,10 +237,10 @@ export default function RegistrationForm() {
         </LocalizationProvider>
 
         <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }}>Address Proof & Documents</Typography>
-        <PhotoUpload label="Upload your GST Certificate" max={1} />
-        <PhotoUpload label="Upload your FSSAI" max={1} />
-        <PhotoUpload label="Upload your ID Proof" max={1} />
-        <PhotoUpload label="Upload your Address Proof" max={1} />
+        <PhotoUpload onChange={()=>{}} label="Upload your GST Certificate" max={1} />
+        <PhotoUpload onChange={()=>{}} label="Upload your FSSAI" max={1} />
+        <PhotoUpload onChange={()=>{}} label="Upload your ID Proof" max={1} />
+        <PhotoUpload onChange={()=>{}} label="Upload your Address Proof" max={1} />
 
         <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F' }}>
           Submit
