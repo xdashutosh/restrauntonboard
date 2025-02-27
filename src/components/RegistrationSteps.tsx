@@ -1,55 +1,58 @@
-import { useState } from 'react';
 import {
-  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
-  Box,
-  Checkbox,
-  FormControlLabel,
-  FormGroup,
+  TextField,
+  IconButton,
+  Stack,
   Typography,
   Autocomplete,
-  Divider,
-  Drawer,
-  Stack
+  FormControlLabel,
+  Checkbox,
+  Chip,
+  Drawer
 } from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { MobileTimePicker } from '@mui/x-date-pickers/MobileTimePicker';
-import PhotoUpload from './PhotoUpload';
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
-const INDIAN_STATIONS = [
-  'Mumbai Central',
-  'Delhi',
-  'Bangalore',
-  'Chennai',
-  'Kolkata',
-  'Hyderabad',
-  // Add more stations...
-];
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
+import React from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout } from '../store/authSlice';
+import { useNavigate } from 'react-router-dom';
+import axiosInstance from '../interceptor/axiosInstance'
+import { RootState } from '../store/store';
+
+
+interface Station {
+  station_id: number;
+  station_name: string;
+}
+
+const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function RegistrationForm() {
-  const [workingDays, setWorkingDays] = useState({
-    monday: false,
-    tuesday: false,
-    wednesday: false,
-    thursday: false,
-    friday: false,
-    saturday: false,
-    sunday: false
+  const [formState, setFormState] = useState<Record<string, any>>({
+      opening_time: '',
+      closing_time: '',
+      rest_time_start: '',
+      rest_time_finish: '',
+      operating_days: "{FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE}", // Default all false
+      media_url: "{}" // Media URLs stored in JSON-like format
   });
-  const [openingTime, setOpeningTime] = useState(null);
-  const [closingTime, setClosingTime] = useState(null);
-  const [whatsappSameAsPhone, setWhatsappSameAsPhone] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [documents, setDocuments] = useState({
-    gst: '',
-    fssai: '',
-    idProof: '',
-    addressProof: ''
-  });
+
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+  const [confirmAcn, setConfirmAcn] = useState<string>(""); 
+  const [operatingDays, setOperatingDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [mediaInput, setMediaInput] = useState<string>("");
+  const [selectAll, setSelectAll] = useState<boolean>(false);
+
+  const [stations,setstations]=useState<any>([]);
 
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false); // State for drawer
@@ -57,231 +60,398 @@ export default function RegistrationForm() {
     setDrawerOpen(open);
   };
 
-  const handleWorkingDayChange = (day: string, checked: boolean) => {
-    setWorkingDays({ ...workingDays, [day]: checked });
-  };
+  const userData = useSelector((state: RootState) => state.auth.userData);
+  const dispatch= useDispatch();
+  useEffect(()=>{
+  const getdata = async()=>{
+    const res = await axiosInstance.get(`/restraunts/?vendor_id=${userData?.vendor_id}`);
+    console.log(res?.data?.data?.rows[0]?.verified);
+    if(res?.data?.data?.rows?.length>0)
+    {
+    if(res?.data?.data?.rows[0]?.verified==0)
+    {
+      toggleDrawer(true);
+    }
+    else{
+      navigate("/dashboard");
+    }
+    }
+  }
+  getdata();
+  },[userData]);
 
-  const handleSelectAllDays = (checked: boolean) => {
-    setWorkingDays({
-      monday: checked,
-      tuesday: checked,
-      wednesday: checked,
-      thursday: checked,
-      friday: checked,
-      saturday: checked,
-      sunday: checked
+
+
+  const Addrestraunt = async()=>{
+    try {
+      const response = await axiosInstance.post('/restraunt', {
+        ...formState,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
     });
-  };
-
-  const handlesubmit =()=>{
-    toggleDrawer(true)
+    } catch (error) {
+      
+    }
   }
 
+  // Handle Text Input and Time Picker Changes
+  const handleChange = (e: any, key?: string) => {
+      if (key) {
+          // Handle TimePicker changes
+          setFormState((prevState) => ({
+              ...prevState,
+              [key]: e ? dayjs(e).format('HH:mm') : '', // Store in HH:mm format
+          }));
+      } else {
+          // Handle TextField changes
+          const { name, value } = e.target;
+          setFormState((prevState) => ({
+              ...prevState,
+              [name]: value,
+          }));
+      }
+  };
+
+  useEffect(() => {
+      setFormState((prevState) => ({
+          ...prevState,
+          station_id: selectedStation?.station_id || '',
+          vendor_id:userData?.vendor_id
+      }));
+  }, [selectedStation]);
+
+
+  console.log(formState)
+  useEffect(()=>{
+    const getdata = async()=>{
+      const res  = await axiosInstance.get('/stations');
+      setstations(res.data.data.rows);
+    }
+    getdata();
+  },[])
+
+
+
+  // ✅ Handle Checkbox Change for Operating Days
+  const handleDayToggle = (index: number) => {
+      const updatedDays = [...operatingDays];
+      updatedDays[index] = !updatedDays[index]; // Toggle true/false
+
+      setOperatingDays(updatedDays);
+
+      // Convert array to "{TRUE, FALSE, ...}" format for formState
+      const formattedDays = `{${updatedDays.map(day => day ? "TRUE" : "FALSE").join(", ")}}`;
+
+      setFormState((prevState) => ({
+          ...prevState,
+          operating_days: formattedDays,
+      }));
+      setSelectAll(updatedDays.every(day => day));
+  };
+
+  const handleSelectAllToggle = () => {
+      const newSelectAll = !selectAll;
+      setSelectAll(newSelectAll);
+
+      const updatedDays = weekDays.map(() => newSelectAll);
+      setOperatingDays(updatedDays);
+
+      // Convert array to "{TRUE, FALSE, ...}" format for formState
+      const formattedDays = `{${updatedDays.map(day => day ? "TRUE" : "FALSE").join(", ")}}`;
+
+      setFormState((prevState) => ({
+          ...prevState,
+          operating_days: formattedDays,
+      }));
+  };
+
+  const handleAddMedia = (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter" && mediaInput.trim() !== "") {
+          event.preventDefault();
+          setMediaUrls([...mediaUrls, mediaInput.trim()]);
+          setMediaInput("");
+
+          // Store in formState as "{media1, media2, ...}"
+          setFormState((prevState) => ({
+              ...prevState,
+              media_url: `{${[...mediaUrls, mediaInput.trim()].join(", ")}}`,
+          }));
+      }
+  };
+
+  // ✅ Handle Removing Media URL Chip
+  const handleRemoveMedia = (index: number) => {
+      const updatedMedia = mediaUrls.filter((_, i) => i !== index);
+      setMediaUrls(updatedMedia);
+
+      // Update formState after removal
+      setFormState((prevState) => ({
+          ...prevState,
+          media_url: `{${updatedMedia.join(", ")}}`,
+      }));
+  };
+
   return (
-    <Box sx={{ width: '100%', p: 3, borderRadius: '12px', background: '#FFF4F1',boxShadow:'none' }}>
-      <Typography fontFamily={"font-katibeh"} variant="h4" ><b style={{color:'#FF6B3F'}}>Add</b> Restaurant</Typography>
-      <Typography fontFamily={"font-katibeh"} sx={{ color: 'gray', mb: 2}}>Provide basic details like restaurant name, location, owner name, and contact information etc.</Typography>
-      <Divider/>
-      <Box component="form" noValidate autoComplete="off" sx={{mt:2}}>
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mb: 1 }} fontWeight={600} letterSpacing={1}>Basic Details</Typography>
-        <TextField 
-          fullWidth
-          label="Restaurant Name"
-          placeholder="Enter your restaurant name"
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 3, // Apply border-radius
-              bgcolor:'white'
-            },
-            mb:2
-          }}
-        />
-        <TextField 
-          fullWidth
-          label="Owner Name"
-          placeholder="Enter your name"
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 3, // Apply border-radius
-              bgcolor:'white'
-            },
-            mb:2
-          }}        />
-        <Autocomplete
-          options={INDIAN_STATIONS}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Station Location"
-              placeholder="Select station location"
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 3, // Apply border-radius
-                  bgcolor:'white'
-                },
-                mb:2
-              }}            />
-          )}
-        />
-        <TextField 
-          fullWidth
-          label="Minimum Order Amount"
-          placeholder="Select minimum order amount"
-          type="number"
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 3, // Apply border-radius
-              bgcolor:'white'
-            },
-            mb:2
-          }}        />
-        <Divider sx={{my:2}}/>
-        <Typography fontFamily={"font-katibeh"} variant="h6" fontWeight={600} letterSpacing={1} sx={{ mt: 4, mb: 1 }}>Restaurant Photos</Typography>
-        <Stack direction={'row'} justifyContent={'space-between'}>
-        <PhotoUpload onChange={()=>{}} max={4} />
-        <PhotoUpload onChange={()=>{}} max={4} />
-        <PhotoUpload onChange={()=>{}} max={4} />
-        </Stack>
-        <Stack direction={'row'} justifyContent={'space-between'}>
-        <PhotoUpload onChange={()=>{}} max={4} />
-        <PhotoUpload onChange={()=>{}} max={4} />
-        <PhotoUpload onChange={()=>{}} max={4} />
-        </Stack>
-        <Divider sx={{my:4}}/>
-        
-        <Typography fontFamily={"font-katibeh"} variant="h6" fontWeight={600} letterSpacing={1} sx={{ mt: 4, mb: 1 }}>Owner Contact Details</Typography>
-        <TextField 
-          fullWidth
-          label="Email Address"
-          placeholder="Enter your email address"
-          type="email"
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 3, // Apply border-radius
-              bgcolor:'white'
-            },
-            mb:2
-          }}        />
-        <TextField 
-          fullWidth
-          label="Mobile Number"
-          placeholder="Enter your mobile number"
-          type="tel"
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 3, // Apply border-radius
-              bgcolor:'white'
-            },
-            mb:2
-          }}          onChange={(e) => setMobileNumber(e.target.value)}
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={whatsappSameAsPhone}
-              onChange={(e) => setWhatsappSameAsPhone(e.target.checked)}
-            />
-          }
-          label="WhatsApp number is same as above"
-        />
-        {!whatsappSameAsPhone && (
-          <TextField 
-            fullWidth
-            label="WhatsApp Number"
-            placeholder="Enter WhatsApp number"
-            type="tel"
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 3, // Apply border-radius
-                bgcolor:'white'
-              },
-              mb:2
-            }}            onChange={(e) => setWhatsappNumber(e.target.value)}
-          />
-        )}
+    <Stack p={2}>
+    <Stack spacing={2} mt={1}>
+                    <TextField
+                        fullWidth
+                        label="Name"
+                        name="name"
+                        value={formState.name || ''}
+                        onChange={handleChange}
+                    />
+                    <TextField
+                        fullWidth
+                        label="Owner's name"
+                        name="owner_name"
+                        value={formState.owner_name || ''}
+                        onChange={handleChange}
+                    />
+                    {stations.length > 0 && <Autocomplete
+                        options={stations}
+                        getOptionLabel={(option) => option.station_name}
+                        value={selectedStation}
+                        onChange={(_, newValue) => setSelectedStation(newValue)}
+                        renderInput={(params) => (
+                            <TextField {...params} label="Select Station" variant="outlined" />
+                        )}
+                        clearOnEscape
+                    />}
+                    <TextField
+                        fullWidth
+                        label="Street"
+                        name="street"
+                        value={formState.street || ''}
+                        onChange={handleChange}
+                    />
 
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }} fontWeight={600} letterSpacing={1}>Select Working Days & Time</Typography>
-        <FormGroup>
-         
-          <Stack  maxHeight={'22vh'}  flexWrap={'wrap'}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                onChange={(e) => handleSelectAllDays(e.target.checked)}
-              />
-            }
-            label="Select All"
-          />
-          {Object.entries(workingDays).map(([day, checked]) => (
-            
-            <FormControlLabel
-            key={day}
-            control={
-                <Checkbox
-                  checked={checked}
-                  onChange={(e) => handleWorkingDayChange(day, e.target.checked)}
-                />
-              }
-              label={day.charAt(0).toUpperCase() + day.slice(1)}
-              />
-            ))}
-            </Stack>
-        </FormGroup>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <MobileTimePicker
-              label="Opening Time"
-              value={openingTime}
-              onChange={(newValue:any) => setOpeningTime(newValue)}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 3, // Apply border-radius
-                  bgcolor:'white'
-                },
-                mb:2
-              }}
-            />
-            <MobileTimePicker
-              label="Closing Time"
-              value={closingTime}
-              onChange={(newValue:any) => setClosingTime(newValue)}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 3, // Apply border-radius
-                  bgcolor:'white'
-                },
-                mb:2
-              }}            />
-          </Box>
-        </LocalizationProvider>
+                    <Stack direction={'row'} gap={1}>
+                        <TextField
+                            fullWidth
+                            label="Pincode"
+                            name="pincode"
+                            value={formState.pincode || ''}
+                            onChange={handleChange}
+                        />
+                        <TextField
+                            fullWidth
+                            label="City"
+                            name="city"
+                            value={formState.city || ''}
+                            onChange={handleChange}
+                        />
+                        <TextField
+                            fullWidth
+                            label="State"
+                            name="state"
+                            value={formState.state || ''}
+                            onChange={handleChange}
+                        />
+                    </Stack>
+                    <Stack direction={'row'} gap={1}>
+                        <TextField
+                            fullWidth
+                            label="Outlet Email"
+                            name="email"
+                            value={formState.email || ''}
+                            onChange={handleChange}
+                        />
+                        <TextField
+                            fullWidth
+                            label="Outlet Contact Number"
+                            name="phone"
+                            value={formState.phone || ''}
+                            onChange={handleChange}
+                        />
+                    </Stack>
 
-        <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ mt: 4, mb: 1 }} fontWeight={600} letterSpacing={1}>Address Proof & Documents</Typography>
-        <Stack gap={2}>
-        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
-          <Typography sx={{wordSpacing:4}}>Upload your <b>GST Certificate</b></Typography>
-          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
-        </Stack>
-        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
-          <Typography sx={{wordSpacing:4}}>Upload your <b>FSSAI</b></Typography>
-          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
-        </Stack>
-        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
-          <Typography sx={{wordSpacing:4}}>Upload your <b>ID Proof</b></Typography>
-          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
-        </Stack>
-        <Stack flexDirection={'row'} width={'100%'} alignItems={'center'} justifyContent={'space-between'}>
-          <Typography sx={{wordSpacing:4}}>Upload your <b>Address Proof</b></Typography>
-          <Button variant='contained' sx={{bgcolor:'#FAD4BE' ,borderRadius:2,boxShadow:'none',color:'#EB8041'}} ><b>Upload</b></Button>
-        </Stack>
-        </Stack>
-        
+                    <TextField
+                        fullWidth
+                        label="GST Number"
+                        name="gst"
+                        value={formState.gst || ''}
+                        onChange={handleChange}
+                    />
+                    <Stack direction={'row'} gap={1}>
+                        <TextField
+                            fullWidth
+                            label="FSSAI Number"
+                            name="fssai"
+                            value={formState.fssai || ''}
+                            onChange={handleChange}
+                        />
 
-        <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder',fontSize:'medium' }} onClick={handlesubmit}>
+                        <TextField
+                            fullWidth
+                            label="FSSAI Expiry"
+                            name="fssai_exp"
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            type='date'
+                            value={formState.fssai_exp || ''}
+                            onChange={handleChange}
+                        />
+                    </Stack>
+                    <TextField
+                        fullWidth
+                        label="Identity Proof"
+                        name="id_proof"
+                        placeholder='link for aadhar,pancard etc...'
+                        value={formState.id_proof || ''}
+                        onChange={handleChange}
+                    />
+                    <Stack direction={'row'} gap={1}>
+
+                        <TextField
+                            fullWidth
+                            label="Distance from station(kms)"
+                            name="distance"
+                            type='number'
+                            value={formState.distance || ''}
+                            onChange={handleChange}
+                        />
+
+                        <TextField
+                            fullWidth
+                            label="Delivery Time (In min)"
+                            name="delivery_time"
+                            type='number'
+                            value={formState.delivery_time}
+                            onChange={handleChange}
+                        />
+
+                    </Stack>
+                    <Stack direction="row" width={'100%'} justifyContent={'space-between'}>
+                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            <TimePicker
+                                label="Opening Time"
+                                value={formState.opening_time ? dayjs(`1970-01-01T${formState.opening_time}`) : null}
+                                onChange={(newValue) => handleChange(newValue, "opening_time")}
+                            />
+                        </LocalizationProvider>
+
+                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            <TimePicker
+                                label="Closing Time"
+                                value={formState.closing_time ? dayjs(`1970-01-01T${formState.closing_time}`) : null}
+                                onChange={(newValue) => handleChange(newValue, "closing_time")}
+                            />
+                        </LocalizationProvider>
+                    </Stack>
+                    <Stack direction="row" width={'100%'} justifyContent={'space-between'}>
+                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            <TimePicker
+                                label="Rest time start"
+                                value={formState.rest_time_start ? dayjs(`1970-01-01T${formState.rest_time_start}`) : null}
+                                onChange={(newValue) => handleChange(newValue, "rest_time_start")}
+                            />
+                        </LocalizationProvider>
+
+                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            <TimePicker
+                                label="Rest time end"
+                                value={formState.rest_time_finish ? dayjs(`1970-01-01T${formState.rest_time_finish}`) : null}
+                                onChange={(newValue) => handleChange(newValue, "rest_time_finish")}
+                            />
+                        </LocalizationProvider>
+                    </Stack>
+
+                    {/* ✅ Operating Days Checkboxes */}
+                    <Typography variant="subtitle1" sx={{ mt: 2 }}>Operating Days</Typography>
+                    <Stack>
+
+                    <FormControlLabel
+                        control={<Checkbox checked={selectAll} onChange={handleSelectAllToggle} />}
+                        label="Select All"
+                        />
+                    <Stack direction="row" flexWrap="wrap">
+                        {weekDays.map((day, index) => (
+                            <FormControlLabel
+                            key={day}
+                            control={
+                                <Checkbox
+                                        checked={operatingDays[index]}
+                                        onChange={() => handleDayToggle(index)}
+                                        color="primary"
+                                        />
+                                    }
+                                    label={day}
+                                    />
+                                ))}
+                    </Stack>
+                                </Stack>
+
+
+                    <TextField
+                        fullWidth
+                        label="Bank Name"
+                        name="bank_name"
+                        value={formState.bank_name || ''}
+                        onChange={handleChange}
+                    />
+                    <TextField
+                        fullWidth
+                        label="Bank owner's name"
+                        name="bank_owner"
+                        value={formState.bank_owner || ''}
+                        onChange={handleChange}
+                    />
+                    <Stack direction={'row'} gap={1}>
+                        <TextField
+                            fullWidth
+                            label="Account Number"
+                            name="acn"
+                            value={formState.acn || ''}
+                            onChange={handleChange}
+                        />
+                         <TextField
+                            fullWidth
+                            label="Confirm Account Number"
+                            value={confirmAcn}
+                            onChange={(e) => setConfirmAcn(e.target.value)} // ✅ Does not affect formState
+                            error={formState.acn !== confirmAcn && confirmAcn !== ""}
+                            helperText={confirmAcn && formState.acn !== confirmAcn ? "Account numbers do not match" : ""}
+                        />
+                    
+                    </Stack>
+                    <TextField
+                            fullWidth
+                            label="IFSC"
+                            name="ifsc"
+                            value={formState.ifsc || ''}
+                            onChange={handleChange}
+                        />
+
+                    <Stack spacing={2} mt={1}>
+                        <TextField
+                            fullWidth
+                            label="Outlet Images"
+                            placeholder="Enter Outlet Image URL and press Enter"
+                            value={mediaInput}
+                            onChange={(e) => setMediaInput(e.target.value)}
+                            onKeyDown={handleAddMedia}
+                        />
+                        <Stack direction="row" flexWrap="wrap" gap={1}>
+                            {mediaUrls.map((url, index) => (
+                                <Chip
+                                    key={index}
+                                    label={url}
+                                    onDelete={() => handleRemoveMedia(index)}
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            ))}
+                        </Stack>
+                    </Stack>
+
+                </Stack>
+<Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder',fontSize:'medium' }} onClick={Addrestraunt}>
           Submit
         </Button>
-      
 
-        <Drawer
+<Drawer
           anchor="bottom"
           open={drawerOpen}
           sx={{
@@ -296,13 +466,12 @@ export default function RegistrationForm() {
           <img src='https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRVKyAHIjNlFhGsr9sugvi1_4G868kL9yjR1nbh6SYQcICe2ZUc' height={150} width={150}/>
           <Typography fontFamily={"font-katibeh"} variant='h5' >Pending for Review</Typography>
           <Typography fontFamily={"font-katibeh"} color='gray'  >You'll receive a mail once your details are  reviewed by us.</Typography>
-          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder' }} onClick={()=>navigate("/dashboard")}>
+          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder' }} onClick={()=>dispatch(logout())}>
           Okay
         </Button>
          </Stack>
          
         </Drawer>
-      </Box>
-    </Box>
+              </Stack> 
   );
 }

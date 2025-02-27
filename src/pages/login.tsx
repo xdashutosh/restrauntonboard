@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, TextField, Button, Typography, Box, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { setPhoneNumber, generateOTP, verifyOTP } from '../store/authSlice';
+import { setUser } from '../store/authSlice';
 import type { RootState } from '../store/store';
 import { useToast } from '../hooks/use-toast';
 import React from 'react';
+import axiosInstance from '../interceptor/AxiosInstance';
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -16,7 +17,7 @@ export default function Login() {
   const [showOTP, setShowOTP] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
 
-  const { otp, otpExpiry } = useSelector((state: RootState) => state.auth);
+  const otpExpiry  =Date.now() + 120000;
 
   useEffect(() => {
     if (otpExpiry) {
@@ -29,9 +30,9 @@ export default function Login() {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [otpExpiry]);
+  }, [showOTP]);
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async() => {
     if (phone.length !== 10) {
       toast({
         title: "Invalid phone number",
@@ -40,8 +41,10 @@ export default function Login() {
       });
       return;
     }
-    dispatch(setPhoneNumber(phone));
-    dispatch(generateOTP());
+const res = await axiosInstance.post("/send-otp",{"mobile":phone});
+console.log(res?.data?.data?.otp);
+
+   
     setShowOTP(true);
     setTimeLeft(120);
   };
@@ -64,24 +67,26 @@ export default function Login() {
     }
   };
 
-  const handleVerifyOTP = (otp: string) => {
-    dispatch(verifyOTP(otp));
-    // const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
-    let isAuthenticated = otp;
-    
-    if (isAuthenticated=="1234") {
-      toast({
-        title: "Success",
-        description: "OTP verified successfully"
-      });
-      navigate('/register');
-    } else {
-      toast({
-        title: "Invalid OTP",
-        description: "Please enter the correct OTP",
-        variant: "destructive"
-      });
-    }
+  const handleVerifyOTP = async(otp: string) => {
+const res = await axiosInstance.get(`/get-otp/?mobile=${phone}`);
+console.log(res?.data?.data?.rows[0]?.otp);
+if(otp==res?.data?.data?.rows[0]?.otp)
+{
+  dispatch(setUser(res?.data?.data?.rows[0]));
+  toast({
+    title: "Success",
+    description: "OTP verified successfully"
+  });
+  navigate('/register');
+}
+else{
+  toast({
+    title: "Invalid OTP",
+    description: "Please enter the correct OTP",
+    variant: "destructive"
+  });
+}
+  
   };
 
   return (
