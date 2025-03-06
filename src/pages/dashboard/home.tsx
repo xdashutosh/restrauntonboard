@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Card, CardContent, Typography, Grid, Stack, Divider } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 import { Star, KeyboardArrowDown } from "@mui/icons-material";
@@ -6,6 +6,7 @@ import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
 import { CoinsIcon } from "lucide-react";
+import axiosInstance from "../../interceptor/axiosInstance";
 
 // Define revenue data with 5-day intervals
 const revenueData = [
@@ -17,10 +18,25 @@ const revenueData = [
   { name: "25-30 Feb", value: 20000 },
 ];
 
-const Home = () => {
-  const restaurant = useSelector((state: RootState) => state.restaurant.data);
-  console.log(restaurant);
+interface props {
+  restdata:any;
+}
 
+const Home: React.FC<props> = ({restdata}) => {
+ const [station,setstation]=useState(null);
+
+  useEffect(()=>{
+    const getdata = async()=>{
+      try {
+        const res = await axiosInstance.get(`/stations/?station_id=${restdata?.station_id}`);
+        setstation(res?.data?.data?.rows[0]?.station_name)
+
+      } catch (error) {
+        
+      }
+    }
+    getdata();
+  },[restdata])
   return (
     <Box sx={{ width: "100%" }}>
       {/* Restaurant Header */}
@@ -30,7 +46,7 @@ const Home = () => {
           borderBottomLeftRadius: "30px",
           borderBottomRightRadius: "30px",
           background: `linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.3), transparent), 
-                 url(https://rishikeshcamps.in/wp-content/uploads/2023/05/restaarant.jpg)`,
+                 url(${restdata?.media_url})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           height: "20vh",
@@ -42,11 +58,11 @@ const Home = () => {
 
         <CardContent sx={{ position: "relative", color: "white", width: "100%" }}>
           <Typography fontFamily={"font-katibeh"} variant="h6" fontWeight={600}>
-            Zaika Restaurant
+            {restdata?.name}
           </Typography>
           <Stack direction={"row"} width={"100%"} justifyContent={"space-between"} alignItems={"center"}>
             <Typography fontFamily={"font-katibeh"} variant="body2" color="white">
-              Station: <strong>New Delhi</strong>
+              Station: <strong>{station}</strong>
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", bgcolor: "#EB8041", px: 1, borderRadius: 2 }}>
               <Star sx={{ color: "white", fontSize: 15 }} />

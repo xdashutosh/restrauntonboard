@@ -1,9 +1,10 @@
 import axios from 'axios';
 // import { isTokenExpired } from '../../utils/isTokenExpired';
-
+// https://olf-olf-backend.kxkfin.easypanel.host/api/v1
+// http://localhost:5008/api/v1/
 // Create the Axios instance
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:5008/api/v1/",
+  baseURL: "https://olf-olf-backend.kxkfin.easypanel.host/api/v1/",
   headers: { 'Content-Type': 'application/json' },
 });
 

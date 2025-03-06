@@ -1,113 +1,120 @@
-
-
-import React, { useState } from "react";
-import { Card, CardContent, Typography, IconButton, Box, Tabs, Tab, Switch, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { 
+  Card, CardContent, Typography, IconButton, Box, Tabs, Tab, Switch, 
+  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, 
+  Select, MenuItem, FormControl, InputLabel,
+  Avatar
+} from "@mui/material";
 import { Add, Fastfood } from "@mui/icons-material";
-import { VeganIcon } from "lucide-react";
-
-const initialDishes = {
-  "North Indian": [
-    { name: "Palak Paneer", price: 299, image: "https://www.seriouseats.com/thmb/lhYY8CqBJoDwxj57KFAiY9pORhI=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/20220629-PalakPaneer-Amanda-Suarez-hero-a2fdf0f3ff5141dfbf44d3977678c578.JPG", inStock: true,dish_type:0 },
-    { name: "Shahi Paneer", price: 349, image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-j1XdLKn31g1i4xhsLYgRw0eiuPzxMgyHpw&s", inStock: true,dish_type:0 },
-    { name: "Dal Makhni", price: 249, image: "https://sinfullyspicy.com/wp-content/uploads/2015/03/4-1.jpg", inStock: true ,dish_type:0},
-    { name: "Aloo Gobhi", price: 149, image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlmS7qVvLisBtTcTn6QXhOcLLHqSYwRwFcbg&s", inStock: true,dish_type:0 },
-  ],
-  "South Indian": [
-    { name: "Dosa", price: 99, image: "dosa.jpg", inStock: true,dish_type:0 },
-    { name: "Idli", price: 79, image: "idli.jpg", inStock: true,dish_type:0 },
-    { name: "Vada", price: 69, image: "vada.jpg", inStock: false,dish_type:0 }
-  ],
-  "Chinese": [
-    { name: "Hakka Noodles", price: 199, image: "hakka_noodles.jpg", inStock: true,dish_type:0 },
-    { name: "Manchurian", price: 179, image: "manchurian.jpg", inStock: false ,dish_type:0}
-  ]
-};
+import { useSelector } from "react-redux";
+import axiosInstance from "../../interceptor/axiosInstance";
+import { RootState } from "../../store/store";
 
 const Menu = () => {
-  const [selectedTab, setSelectedTab] = useState("North Indian");
-  const [dishes, setDishes] = useState(initialDishes);
+  const [dishes, setDishes] = useState<any>([]);
+  const [filteredDishes, setFilteredDishes] = useState<any>([]);
+  const [foodTypes, setFoodTypes] = useState<any>([]);
+  const [dishCategories, setDishCategories] = useState<any>([]);
+  const [selectedFoodType, setSelectedFoodType] = useState<any>("all");
+  const [selectedCategory, setSelectedCategory] = useState<any>("all");
   const [open, setOpen] = useState(false);
-  const [newDish, setNewDish] = useState({ name: "", price: "", image: "", inStock: true });
+  const [newDish, setNewDish] = useState({ name: "", price: "", image: "", inStock: true, dish_type: 0 });
+  
+  const userData = useSelector((state: RootState) => state?.auth?.userData);
 
-  const toggleStock = (category, index) => {
-    setDishes(prev => {
-      const updatedDishes = { ...prev };
-      updatedDishes[category][index].inStock = !updatedDishes[category][index].inStock;
-      return updatedDishes;
-    });
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await axiosInstance.get(`/dishes/?res_id=7`);
+        setDishes(res?.data?.data?.rows);
+        setFilteredDishes(res?.data?.data?.rows);
+      } catch (error) {
+        console.error("Error fetching dishes:", error);
+      }
+    };
 
-  const addDish = () => {
-    if (newDish.name && newDish.price) {
-      setDishes(prev => ({
-        ...prev,
-        [selectedTab]: [...prev[selectedTab], { ...newDish, price: parseInt(newDish.price), image: "placeholder.jpg" }]
-      }));
-      setOpen(false);
-      setNewDish({ name: "", price: "", image: "", inStock: true });
+    fetchData();
+  }, [userData]);
+
+  useEffect(() => {
+    // Fetch food types and dish categories
+    const fetchFoodTypes = async () => {
+      const response = await axiosInstance.get(`/food-type`);
+      setFoodTypes(response?.data?.data?.rows);
+    };
+
+    const fetchDishCategories = async () => {
+      const response = await axiosInstance.get(`/dish-cat`);
+      console.log(response?.data?.data?.rows)
+      setDishCategories(response?.data?.data?.rows);
+    };
+
+    fetchFoodTypes();
+    fetchDishCategories();
+  }, []);
+
+  useEffect(() => {
+    let filtered = dishes;
+    if (selectedFoodType !== "all") {
+      filtered = filtered.filter(dish => dish.food_type === parseInt(selectedFoodType));
     }
-  };
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(dish => dish.dish_cat_id === parseInt(selectedCategory));
+    }
+    setFilteredDishes(filtered);
+  }, [selectedFoodType, selectedCategory, dishes]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center",mx:3 }}>
-      <Stack direction={'row'}>
-      <Tabs value={selectedTab} variant="scrollable"  onChange={(_, newValue) => setSelectedTab(newValue)} centered>
-        {Object.keys(initialDishes).map(category => (
-          <Tab key={category} label={category} value={category} />
-        ))}
-      </Tabs>
-      
-      <IconButton
-              color="inherit"
-              edge="end"
-              onClick={() => setOpen(true)}
-              sx={{ bgcolor: '#EB8041', borderRadius: 2,color:'white' }}
-            >
-              <Add  />
-            </IconButton> 
-              </Stack>
-      <Card sx={{ width: "100%", p: 1, borderRadius: 3,boxShadow:'none',mt:2 }} variant="outlined">
-        <Typography fontSize={"larger"} fontFamily={"font-katibeh"} sx={{ fontWeight: "bold", display: "flex", alignItems: "center", gap: 1 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mx: 1 }}>
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }} width={'100%'}>
+
+        <FormControl  sx={{ width:'100%'}}>
+          <InputLabel>Food Type</InputLabel>
+          <Select sx={{border:'none',bgcolor:'white',width:'100%'}} value={selectedFoodType} onChange={(e) => setSelectedFoodType(e.target.value)}>
+            <MenuItem value="all">All</MenuItem>
+            {foodTypes.map((ft:any) => (
+              <MenuItem key={ft.food_type_id} value={ft.food_type_id}>{ft.food_cat}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl  sx={{ width:'100%'}}>
+          <InputLabel>Category</InputLabel>
+          <Select sx={{border:'none',bgcolor:'white',width:'100%'}} value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+            <MenuItem value="all">All</MenuItem>
+            {dishCategories.map((dc:any) => (
+              <MenuItem key={dc.dish_cat_id} value={dc.dish_cat_id}>{dc.cat_name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Button endIcon={<Add/>} sx={{bgcolor:'#EB8041',color:'white'}}></Button>
+      </Stack>
+
+      <Card sx={{ width: "100%", p: 1, borderRadius: 3, boxShadow: "none", mt: 2 }} variant="outlined">
+        <Typography fontSize="larger" fontWeight="bold" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Fastfood sx={{ color: "#E07A5F" }} /> Item Stock List
         </Typography>
-        <CardContent >
-          {dishes[selectedTab].map((dish, index) => (
-            <Box key={index} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 2, borderBottom: "3px solid #eee" }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <img src={dish.image} alt={dish.name} width={60}   style={{ borderRadius: "20%",height:"70px" }} />
-                <Box>
-                  <Stack direction={'row'} gap={1}>
-                  <Typography fontFamily={"Poppins"} sx={{ fontWeight: "bold" }}>{dish.name}</Typography>
-                   {dish?.dish_type==0?
-
-                     <img src="https://i.pinimg.com/736x/e4/1f/f3/e41ff3b10a26b097602560180fb91a62.jpg"  width={20} height={20} style={{ borderRadius: "20%" }} />:
-                  <img src="https://cdn.vectorstock.com/i/500p/00/43/non-vegetarian-sign-veg-logo-symbol-vector-50890043.jpg"  width={20} height={20} style={{ borderRadius: "20%" }} />
-                  
-                   }
-                  </Stack>
-                  <Typography fontFamily={"font-katibeh"} sx={{ color: "green" }}>₹{dish.price}</Typography>
-                </Box>
-              </Box>
-              <Box sx={{ display: "flex", alignItems: "center",flexDirection:'column' }}>
-                <Typography fontFamily={"font-katibeh"} sx={{ fontSize: "0.85rem" }}>In Stock</Typography>
-                <Switch checked={dish.inStock} onChange={() => toggleStock(selectedTab, index)} color="warning" />
-              </Box>
+        <CardContent>
+          {filteredDishes.map((dish, index) => (
+            <Box key={index} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 2, borderBottom: "3px solid #eee",gap:4 }}>
+              <img src={dish?.media_url} height={70} style={{borderRadius:'10px',objectFit:'cover'}} width={70}/>
+              <Stack>
+                <Typography fontWeight={600} fontSize={'larger'} textTransform={'uppercase'}>{dish.name}</Typography>
+                
+                <Stack direction={'row'} gap={2}>
+              {dish?.dish_price?.map((pri,index)=>(
+                <Typography >{index==0?<b>QTR</b>:index==1?<b>HALF</b>:<b>FULL</b>} ₹<b style={{color:'#3B7F4B'}}>{pri}</b></Typography>
+              ))}
+              </Stack>
+              </Stack>
+              <Stack width={'100%'}>
+              <Typography>In Stock</Typography>
+              <Switch sx={{color:'orange'}} checked={dish.stock == 1}  />
+              </Stack>
             </Box>
           ))}
         </CardContent>
       </Card>
-
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Add New Dish</DialogTitle>
-        <DialogContent>
-          <TextField label="Dish Name" fullWidth margin="dense" value={newDish.name} onChange={e => setNewDish({ ...newDish, name: e.target.value })} />
-          <TextField label="Price" type="number" fullWidth margin="dense" value={newDish.price} onChange={e => setNewDish({ ...newDish, price: e.target.value })} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={addDish}>Add</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

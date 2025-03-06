@@ -3,7 +3,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 interface AuthState {
   isAuthenticated: boolean;
   userData: any;
- 
+  
 }
 
 const initialState: AuthState = {

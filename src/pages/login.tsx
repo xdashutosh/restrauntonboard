@@ -68,9 +68,10 @@ console.log(res?.data?.data?.otp);
   };
 
   const handleVerifyOTP = async(otp: string) => {
-const res = await axiosInstance.get(`/get-otp/?mobile=${phone}`);
-console.log(res?.data?.data?.rows[0]?.otp);
-if(otp==res?.data?.data?.rows[0]?.otp)
+const res = await axiosInstance.post(`/verify-otp`,{"mobile":phone,otp});
+console.log(res?.data?.status);
+
+if(res?.data?.status)
 {
   dispatch(setUser(res?.data?.data?.rows[0]));
   toast({

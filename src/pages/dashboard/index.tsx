@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Box, 
@@ -31,6 +31,9 @@ import MenuPage from './menu';
 import FeedbackPage from './feedback';
 import Closer from '../Closer';
 import React from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import axiosInstance from '../../interceptor/axiosInstance';
 
 const navItems = [
   { label: 'Home', icon: <HomeOutlined />, path: '/dashboard' },
@@ -43,6 +46,18 @@ const navItems = [
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
+  const userData = useSelector((state: RootState) => state.auth.userData);
+  const [restdata,setrestdata]=useState<any>([]);
+  console.log(userData);
+
+  useEffect(()=>{
+    const getdata = async()=>{
+      const res = await axiosInstance.get(`/restraunts/?vendor_id=${userData?.vendor_id}`);
+      console.log(res?.data?.data?.rows[0]);
+     setrestdata(res?.data?.data?.rows[0])
+    }
+    getdata();
+    },[userData]);
 
   const currentPath = location.pathname;
   const currentTabIndex = navItems.findIndex(item => 
@@ -57,7 +72,7 @@ export default function Dashboard() {
 
       <Box sx={{ mt: 2,  }}>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<HomePage restdata={restdata} />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/menu" element={<MenuPage />} />
