@@ -36,13 +36,16 @@ interface Station {
 const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function RegistrationForm() {
+
+    const userData = useSelector((state: RootState) => state.auth.userData);
   const [formState, setFormState] = useState<Record<string, any>>({
       opening_time: '',
       closing_time: '',
       rest_time_start: '',
       rest_time_finish: '',
       operating_days: "{FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE}", // Default all false
-      media_url: "{}" // Media URLs stored in JSON-like format
+      media_url: "{}" ,// Media URLs stored in JSON-like format
+      vendor_id:userData?.vendor_id
   });
 
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -60,7 +63,7 @@ export default function RegistrationForm() {
     setDrawerOpen(open);
   };
 
-  const userData = useSelector((state: RootState) => state.auth.userData);
+  
   const dispatch= useDispatch();
   useEffect(()=>{
   const getdata = async()=>{
@@ -89,6 +92,11 @@ export default function RegistrationForm() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
     });
+    console.log(response?.data);
+
+    if(response?.data?.data?.rows?.length>0){
+toggleDrawer(true);
+    }
     } catch (error) {
       
     }
@@ -190,6 +198,11 @@ export default function RegistrationForm() {
           media_url: `{${updatedMedia.join(", ")}}`,
       }));
   };
+
+  const handlelogout = ()=>{
+    dispatch(logout());
+    navigate('/login')
+  }
 
   return (
     <Stack p={2}>
@@ -466,7 +479,7 @@ export default function RegistrationForm() {
           <img src='https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRVKyAHIjNlFhGsr9sugvi1_4G868kL9yjR1nbh6SYQcICe2ZUc' height={150} width={150}/>
           <Typography fontFamily={"font-katibeh"} variant='h5' >Pending for Review</Typography>
           <Typography fontFamily={"font-katibeh"} color='gray'  >You'll receive a mail once your details are  reviewed by us.</Typography>
-          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder' }} onClick={()=>dispatch(logout())}>
+          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F',fontWeight:'bolder' }} onClick={handlelogout}>
           Okay
         </Button>
          </Stack>
