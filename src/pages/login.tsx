@@ -6,7 +6,7 @@ import { setUser } from '../store/authSlice';
 import type { RootState } from '../store/store';
 import { useToast } from '../hooks/use-toast';
 import React from 'react';
-import axiosInstance from '../interceptor/AxiosInstance';
+import axiosInstance from '../interceptor/axiosInstance';
 
 export default function Login() {
   const dispatch = useDispatch();
