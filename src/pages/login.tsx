@@ -16,7 +16,7 @@ export default function Login() {
   const [otpInput, setOtpInput] = useState(['', '', '', '']); // Four separate OTP inputs
   const [showOTP, setShowOTP] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
-
+  const [error,seterror]=useState("");
   const otpExpiry  =Date.now() + 120000;
 
   useEffect(() => {
@@ -54,19 +54,31 @@ console.log(res?.data?.data?.otp);
       const newOtpInput = [...otpInput];
       newOtpInput[index] = value;
       setOtpInput(newOtpInput);
-
+  
       // Move to next box automatically
       if (value && index < 3) {
         document.getElementById(`otp-${index + 1}`)?.focus();
       }
-
+  
       // Trigger verification when last box is filled
       if (index === 3 && value.length === 1) {
         handleVerifyOTP(newOtpInput.join(''));
       }
     }
   };
-
+  
+  // Handle backspace key navigation
+  const handleKeyDown = (index: number, event: React.KeyboardEvent) => {
+    if (event.key === 'Backspace') {
+      if (!otpInput[index] && index > 0) {
+        document.getElementById(`otp-${index - 1}`)?.focus();
+      }
+    } else if (event.ctrlKey && event.key === 'Backspace') {
+      setOtpInput(['', '', '', '']); // Clear all fields
+      document.getElementById(`otp-0`)?.focus(); // Focus on the first field
+    }
+  };
+  
   const handleVerifyOTP = async(otp: string) => {
 const res = await axiosInstance.post(`/verify-otp`,{"mobile":phone,otp});
 console.log(res?.data?.status);
@@ -74,18 +86,19 @@ console.log(res?.data?.status);
 if(res?.data?.status)
 {
   dispatch(setUser(res?.data?.data?.rows[0]));
-  toast({
-    title: "Success",
-    description: "OTP verified successfully"
-  });
+  // toast({
+  //   title: "Success",
+  //   description: "OTP verified successfully"
+  // });
   navigate('/register');
 }
 else{
-  toast({
-    title: "Invalid OTP",
-    description: "Please enter the correct OTP",
-    variant: "destructive"
-  });
+  // toast({
+  //   title: "Invalid OTP",
+  //   description: "Please enter the correct OTP",
+  //   variant: "destructive"
+  // });
+  seterror("Invalid Otp or expired!")
 }
   
   };
@@ -141,17 +154,19 @@ else{
               <Box sx={{ display: 'flex',justifyContent:'center',mt:4,gap:2 }}>
                 {otpInput.map((digit, index) => (
                   <TextField
-                    key={index}
-                    id={`otp-${index}`}
-                    value={digit}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    variant="outlined"
-                    type="tel"
-                    inputProps={{ maxLength: 1, style: { textAlign: 'center' } }}
-                    sx={{ width: '4rem',borderRadius:'20px' }}
-                  />
+                  key={index}
+                  id={`otp-${index}`}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  variant="outlined"
+                  type="tel"
+                  inputProps={{ maxLength: 1, style: { textAlign: 'center' } }}
+                  sx={{ width: '4rem', borderRadius: '20px' }}
+                />
                 ))}
               </Box>
+              <Typography sx={{textAlign:'center',color:'red'}}>{error}</Typography>
               {timeLeft != 0 &&
               <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 1 }}>
                 Time remaining: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
