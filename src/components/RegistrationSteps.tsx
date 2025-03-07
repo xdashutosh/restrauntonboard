@@ -204,8 +204,8 @@ export default function RegistrationForm() {
                     <TextField
                         fullWidth
                         label="Owner's name"
-                        name="owner_name"
-                        value={formState.owner_name || ''}
+                        name="bank_owner"
+                        value={formState.bank_owner || ''}
                         onChange={handleChange}
                     />
                     {stations.length > 0 && <Autocomplete
