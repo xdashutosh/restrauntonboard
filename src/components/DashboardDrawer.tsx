@@ -35,12 +35,12 @@ interface DashboardDrawerProps {
 
 const drawerItems = [
   { text: 'Vendor Profile', icon: <Person4Rounded />, path: '/dashboard/profile' },
-  { text: 'Order History', icon: <CompareArrows />, path: '/dashboard/history' },
+  { text: 'Order History', icon: <CompareArrows />, path: '/dashboard/order-history' },
   { text: 'Payment History', icon: <Money/>, path: '/dashboard/money' },
-  { text: 'Offers', icon: <Discount />, path: '/dashboard/revenue' },
+  { text: 'Offers', icon: <Discount />, path: '/dashboard/offers' },
   { text: 'Scheduled Closer', icon: <CalendarViewWeekRounded />, path: '/dashboard/closer' },
   { text: 'Delivery Boy', icon: <Group />, path: '/dashboard/delboy' },
-  { text: 'Customer Interaction', icon: <Chat/>, path: '/dashboard/chat' },
+  { text: 'Customer Interaction', icon: <Chat/>, path: '/dashboard/queries' },
 ];
 
 export default function DashboardDrawer({ open, onClose }: DashboardDrawerProps) {

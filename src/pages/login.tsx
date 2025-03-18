@@ -81,7 +81,7 @@ console.log(res?.data?.data?.otp);
   
   const handleVerifyOTP = async(otp: string) => {
 const res = await axiosInstance.post(`/verify-otp`,{"mobile":phone,otp});
-console.log(res?.data?.status);
+console.log(res?.data);
 
 if(res?.data?.status)
 {

@@ -1,122 +1,201 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  Checkbox,
+  Grid,
+  FormGroup,
   FormControlLabel,
+  Checkbox,
   TextField,
-  MenuItem,
-  Select,
-  TextareaAutosize,
-} from "@mui/material";
-import { CalendarMonth, Schedule } from "@mui/icons-material";
+} from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { Dayjs } from 'dayjs';
 
-const Closer = () => {
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [openingTime, setOpeningTime] = useState("");
-  const [closingTime, setClosingTime] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [reason, setReason] = useState("");
+const daysOfWeek = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
 
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const Closer: React.FC = () => {
+  // Track which days are selected
+  const [selectedDays, setSelectedDays] = useState<Record<string, boolean>>(
+    daysOfWeek.reduce((acc, day) => ({ ...acc, [day]: false }), {})
+  );
+  // Track the "Select All" checkbox
+  const [selectAll, setSelectAll] = useState(false);
 
-  const handleDayChange = (day: string) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+  // Opening & closing time
+  const [openingTime, setOpeningTime] = useState<Dayjs | null>(null);
+  const [closingTime, setClosingTime] = useState<Dayjs | null>(null);
+
+  // Particular day closer states
+  const [particularDate, setParticularDate] = useState<Dayjs | null>(null);
+  const [particularTime, setParticularTime] = useState<Dayjs | null>(null);
+  const [reason, setReason] = useState('');
+
+  // Handle "Select All" changes
+  const handleSelectAllChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const checked = event.target.checked;
+    setSelectAll(checked);
+    // Set all days to the same value
+    const updatedDays = daysOfWeek.reduce(
+      (acc, day) => ({ ...acc, [day]: checked }),
+      {}
     );
+    setSelectedDays(updatedDays);
+  };
+
+  // Handle individual day checkbox changes
+  const handleDayChange = (day: string) => (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const checked = event.target.checked;
+    setSelectedDays((prev) => {
+      const newState = { ...prev, [day]: checked };
+      // If all days are now checked, set selectAll = true; otherwise false
+      const allSelected = daysOfWeek.every((d) => newState[d]);
+      setSelectAll(allSelected);
+      return newState;
+    });
   };
 
   return (
-    <Box
-      sx={{
-        width: "100%",
-        borderRadius: 2,
-        p: 3,
-        boxShadow: "none",
-        fontFamily: "Poppins, sans-serif",
-      }}
-    >
-      {/* Schedule Closer */}
-      <Typography
-        variant="h6"
-        sx={{ display: "flex", alignItems: "center", gap: 1, color: "#A85E43", fontWeight: "bold" }}
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box
+        sx={{
+          maxWidth: 600,
+          mx: 'auto',
+          p: { xs: 2, sm: 3 },
+          border: '1px solid #f0f0f0',
+          borderRadius: 2,
+          backgroundColor: '#fff',
+        }}
       >
-        <Schedule /> Schedule Closer
-      </Typography>
-      <Box sx={{ display: "flex", flexDirection: "column", mt: 1 }}>
-        <FormControlLabel
-          control={<Checkbox />}
-          label="Select All"
-        />
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
-          {days.map((day) => (
+        {/* Schedule Closer heading */}
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          Schedule Closer
+        </Typography>
+
+        {/* Days of week checkboxes */}
+        <FormGroup row sx={{ mb: 2 }}>
+          {/* Select All */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={selectAll}
+                onChange={handleSelectAllChange}
+                color="primary"
+              />
+            }
+            label="Select All"
+          />
+          {daysOfWeek.map((day) => (
             <FormControlLabel
               key={day}
-              control={<Checkbox checked={selectedDays.includes(day)} onChange={() => handleDayChange(day)} />}
+              control={
+                <Checkbox
+                  checked={selectedDays[day]}
+                  onChange={handleDayChange(day)}
+                  color="primary"
+                />
+              }
               label={day}
+              sx={{ mr: 2 }}
             />
           ))}
-        </Box>
-      </Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-        <Select
-          value={openingTime}
-          onChange={(e) => setOpeningTime(e.target.value)}
-          displayEmpty
-          sx={{ width: "48%", bgcolor: "white", borderRadius: 1 }}
-        >
-          <MenuItem value="">00:00</MenuItem>
-          {/* Add time options here */}
-        </Select>
-        <Select
-          value={closingTime}
-          onChange={(e) => setClosingTime(e.target.value)}
-          displayEmpty
-          sx={{ width: "48%", bgcolor: "white", borderRadius: 1 }}
-        >
-          <MenuItem value="">00:00</MenuItem>
-        </Select>
-      </Box>
+        </FormGroup>
 
-      {/* Particular Day Closer */}
-      <Typography
-        variant="h6"
-        sx={{ display: "flex", alignItems: "center", gap: 1, color: "#A85E43", fontWeight: "bold", mt: 3 }}
-      >
-        <CalendarMonth /> Particular Day Closer
-      </Typography>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
-        <TextField
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          sx={{ width: "48%", bgcolor: "white", borderRadius: 1 }}
-        />
-        <Select
-          value={selectedTime}
-          onChange={(e) => setSelectedTime(e.target.value)}
-          displayEmpty
-          sx={{ width: "48%", bgcolor: "white", borderRadius: 1 }}
-        >
-          <MenuItem value="">00:00</MenuItem>
-        </Select>
+        {/* Opening & Closing time pickers */}
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid item xs={6}>
+            <TimePicker
+              label="Opening Time"
+              value={openingTime}
+              onChange={(newValue) => setOpeningTime(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  placeholder="00:00"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <TimePicker
+              label="Closing Time"
+              value={closingTime}
+              onChange={(newValue) => setClosingTime(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  placeholder="00:00"
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
+
+        {/* Particular Day Closer heading */}
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          Particular Day Closer
+        </Typography>
+
+        {/* Date & Time pickers + Reason */}
+        <Grid container spacing={2}>
+          <Grid item xs={6}>
+            <DatePicker
+              label="Select Date"
+              value={particularDate}
+              onChange={(newValue) => setParticularDate(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  placeholder="DD/MM/YYYY"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <TimePicker
+              label="Select Time"
+              value={particularTime}
+              onChange={(newValue) => setParticularTime(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  placeholder="00:00"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              label="Reason"
+              placeholder="Enter your reason"
+              multiline
+              minRows={3}
+              fullWidth
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </Grid>
+        </Grid>
       </Box>
-      <TextareaAutosize
-        placeholder="Enter your reason"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        minRows={3}
-        style={{
-          width: "100%",
-          marginTop: "10px",
-          padding: "10px",
-          borderRadius: "5px",
-          border: "1px solid #ccc",
-          fontFamily: "Poppins, sans-serif",
-        }}
-      />
-    </Box>
+    </LocalizationProvider>
   );
 };
 

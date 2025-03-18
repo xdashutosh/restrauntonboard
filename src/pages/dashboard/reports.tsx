@@ -1,195 +1,265 @@
-// import { 
-//   Box, 
-//   Card, 
-//   CardContent, 
-//   Typography,
-//   Table,
-//   TableBody,
-//   TableCell,
-//   TableHead,
-//   TableRow,
-//   Paper
-// } from '@mui/material';
-// import {
-//   LineChart,
-//   Line,
-//   XAxis,
-//   YAxis,
-//   CartesianGrid,
-//   Tooltip,
-//   ResponsiveContainer
-// } from 'recharts';
-
-// const salesData = [
-//   { name: 'Mon', sales: 4000 },
-//   { name: 'Tue', sales: 3000 },
-//   { name: 'Wed', sales: 5000 },
-//   { name: 'Thu', sales: 2780 },
-//   { name: 'Fri', sales: 1890 },
-//   { name: 'Sat', sales: 6390 },
-//   { name: 'Sun', sales: 3490 },
-// ];
-
-// const topItems = [
-//   { name: 'Butter Chicken', sales: 145, revenue: 14500 },
-//   { name: 'Paneer Tikka', sales: 125, revenue: 11250 },
-//   { name: 'Biryani', sales: 98, revenue: 9800 },
-//   { name: 'Naan', sales: 200, revenue: 4000 },
-//   { name: 'Dal Makhani', sales: 88, revenue: 7040 },
-// ];
-
-// export default function Reports() {
-//   return (
-//     <Box>
-//       <Typography variant="h5" gutterBottom>
-//         Weekly Reports
-//       </Typography>
-
-//       <Card sx={{ mb: 3 }}>
-//         <CardContent>
-//           <Typography variant="h6" gutterBottom>
-//             Sales Overview
-//           </Typography>
-//           <Box sx={{ height: 300 }}>
-//             <ResponsiveContainer width="100%" height="100%">
-//               <LineChart
-//                 data={salesData}
-//                 margin={{
-//                   top: 5,
-//                   right: 30,
-//                   left: 20,
-//                   bottom: 5,
-//                 }}
-//               >
-//                 <CartesianGrid strokeDasharray="3 3" />
-//                 <XAxis dataKey="name" />
-//                 <YAxis />
-//                 <Tooltip />
-//                 <Line
-//                   type="monotone"
-//                   dataKey="sales"
-//                   stroke="#8884d8"
-//                   activeDot={{ r: 8 }}
-//                 />
-//               </LineChart>
-//             </ResponsiveContainer>
-//           </Box>
-//         </CardContent>
-//       </Card>
-
-//       <Paper sx={{ overflow: 'hidden' }}>
-//         <Typography variant="h6" sx={{ p: 2 }}>
-//           Top Selling Items
-//         </Typography>
-//         <Table>
-//           <TableHead>
-//             <TableRow>
-//               <TableCell>Item Name</TableCell>
-//               <TableCell align="right">Units Sold</TableCell>
-//               <TableCell align="right">Revenue (₹)</TableCell>
-//             </TableRow>
-//           </TableHead>
-//           <TableBody>
-//             {topItems.map((item) => (
-//               <TableRow key={item.name}>
-//                 <TableCell component="th" scope="row">
-//                   {item.name}
-//                 </TableCell>
-//                 <TableCell align="right">{item.sales}</TableCell>
-//                 <TableCell align="right">{item.revenue}</TableCell>
-//               </TableRow>
-//             ))}
-//           </TableBody>
-//         </Table>
-//       </Paper>
-//     </Box>
-//   );
-// }
-
-import React, { useState } from "react";
-import { Card, CardContent, Typography, IconButton, Box, Tabs, Tab, Stack, Chip } from "@mui/material";
-import { FileDownload, AccessTime } from "@mui/icons-material";
+import React, { useRef } from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  IconButton,
+  Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button
+} from "@mui/material";
+import { FileDownload } from "@mui/icons-material";
 import { jsPDF } from "jspdf";
 
-const salesData = {
-  daily: [
-    { label: "Today Sales", value: "₹8,250", change: "+12%", color: "#4CAF50" },
-    { label: "Number of Orders", value: "64", change: "+32%", color: "#4CAF50" },
-    { label: "Order Delivered", value: "48", change: "+24%", color: "#4CAF50" },
-    { label: "Order Undelivered", value: "24", change: "-12%", color: "#D32F2F" },
-    { label: "Top Rating Product", value: "Shahi Paneer", isBold: true },
-    { label: "Average Order Value", value: "₹500", change: "+8%", color: "#4CAF50" }
+// Dummy invoice data
+const invoiceData = {
+  companyName: "OLF Foods Pvt Ltd",
+  companyAddress: [
+    "B-148, 11th Floor, Statesman House",
+    "Barakhamba Road, New Delhi - 110001"
   ],
-  weekly: [
-    { label: "Weekly Sales", value: "₹56,000", change: "+15%", color: "#4CAF50" },
-    { label: "Number of Orders", value: "420", change: "+28%", color: "#4CAF50" },
-    { label: "Order Delivered", value: "370", change: "+22%", color: "#4CAF50" },
-    { label: "Order Undelivered", value: "50", change: "-5%", color: "#D32F2F" },
-    { label: "Top Rating Product", value: "Butter Chicken", isBold: true },
-    { label: "Average Order Value", value: "₹550", change: "+10%", color: "#4CAF50" }
+  gstNumber: "07AAACT4787H1ZM",
+  invoiceNo: "IN24-25-50645134",
+  invoiceDate: "09-03-2025",
+  paymentType: "Cash",
+  receiptNo: "1234567",
+  billTo: {
+    name: "Prashasena Singh",
+    address: "H NO 189, Mayur Nagar, Gandhi Nagar, Bikaner",
+    gstin: "XYZAB1234C"
+  },
+  placeOfSupply: "Rajasthan",
+  vendor: {
+    name: "Orange Clove",
+    address: "Subhash Nagar, Jaipur (Raj)",
+    code: "B53",
+    sacCode: "9999"
+  },
+  items: [
+    {
+      sNo: 1,
+      code: "FYSN-105",
+      particulars: "Veg Biryani Raita Combo",
+      qty: 1,
+      rate: 167.0,
+      taxable: 167.0,
+      sgst: 5.0,
+      cgst: 5.0,
+      amount: 175.0
+    }
   ],
-  monthly: [
-    { label: "Monthly Sales", value: "₹2,40,000", change: "+18%", color: "#4CAF50" },
-    { label: "Number of Orders", value: "1,800", change: "+30%", color: "#4CAF50" },
-    { label: "Order Delivered", value: "1,600", change: "+25%", color: "#4CAF50" },
-    { label: "Order Undelivered", value: "200", change: "-8%", color: "#D32F2F" },
-    { label: "Top Rating Product", value: "Tandoori Roti", isBold: true },
-    { label: "Average Order Value", value: "₹580", change: "+12%", color: "#4CAF50" }
-  ]
+  total: {
+    subTotal: 167.0,
+    sgst: 8.35,
+    cgst: 8.35,
+    totalAmount: 175.0,
+    totalInWords: "One Hundred Seventy Five Only"
+  }
 };
 
 const Reports = () => {
-  const [selectedTab, setSelectedTab] = useState<any>("daily");
-  
+  const invoiceRef = useRef<HTMLDivElement>(null);
+
   const generatePDF = () => {
-    const doc = new jsPDF();
-    doc.setFont("helvetica");
-    doc.setFontSize(18);
-    doc.text("Sales Overview Report", 20, 20);
-    doc.setFontSize(12);
-    salesData[selectedTab].forEach((item, index) => {
-      doc.text(`${item.label}: ${item.value} ${item.change || ""}`, 20, 40 + index * 10);
+    const doc = new jsPDF("p", "pt", "a4");
+    // The 'width' and 'windowWidth' props help control scaling to avoid overflow.
+    doc.html(invoiceRef.current!, {
+      callback: function (pdf) {
+        pdf.save("invoice.pdf");
+      },
+      x: 10,
+      y: 10,
+      width: 550,
+      windowWidth: 1000
     });
-    doc.save("Sales_Overview_Report.pdf");
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center"}}>
-      <Stack p={2}>
-        <Stack direction={'row'}  gap={2}>
-        <Chip label="Daily" sx={{px:2,fontWeight:'bolder'}}  onClick={()=>setSelectedTab("daily")} />
-        <Chip label="Weekly" sx={{px:2,fontWeight:'bolder'}}  onClick={()=>setSelectedTab("weekly")} />
-        <Chip label="Monthly" sx={{px:2,fontWeight:'bolder'}}  onClick={()=>setSelectedTab("monthly")}/>
-        </Stack>
-      </Stack>
-      <Card sx={{ width: "100%", maxWidth: 340, p: 2, borderRadius: 3, boxShadow: 3, mt: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography fontFamily={"font-katibeh"} variant="h6" sx={{ fontWeight: "bold", display: "flex", alignItems: "center", gap: 1 }}>
-            <AccessTime sx={{ color: "#E07A5F" }} /> Sales Overview
-          </Typography>
-          <IconButton onClick={generatePDF} sx={{ color: "#E07A5F" }}>
+    <Box
+      sx={{
+        width: "100%",
+        p: 2,
+        display: "flex",
+        justifyContent: "center",
+        boxSizing: "border-box"
+      }}
+    >
+      <Card sx={{ width: "100%", maxWidth: 800, p: 2 }}>
+        {/* Download PDF Button */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <IconButton onClick={generatePDF} color="primary">
             <FileDownload />
           </IconButton>
         </Box>
-        <CardContent>
-          {salesData[selectedTab].map((item, index) => (
-            <Box
-              key={index}
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                py: 1,
-                borderBottom: index !== 5 ? "1px solid #eee" : "none",
-              }}
-            >
-              <Typography fontFamily={"font-katibeh"} sx={{ fontWeight: item.isBold ? "bold" : "normal" }}>{item.label}</Typography>
-              <Typography fontFamily={"font-katibeh"} sx={{ fontWeight: "bold" }}>
-                {item.value} {item.change && <span style={{ color: item.color, fontSize: "0.85rem" }}> {item.change}</span>}
+
+        {/* Invoice Content */}
+        <Box ref={invoiceRef} sx={{ px: 2, fontFamily: "Arial, sans-serif" }}>
+          {/* Header Section with Logo */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            flexWrap="wrap"
+          >
+            {/* Left Side: Logo & Company Info */}
+            <Box sx={{ display: "flex", alignItems: "center", minWidth: 240 }}>
+              <img
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcWNtdgxebNm3zmoxrpPnWAdyZWp6XkD_VCQ&s"
+                alt="Company Logo"
+                style={{ width: 80, height: "auto", marginRight: 16 }}
+              />
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                  {invoiceData.companyName}
+                </Typography>
+                {invoiceData.companyAddress.map((line, idx) => (
+                  <Typography variant="body2" key={idx}>
+                    {line}
+                  </Typography>
+                ))}
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  GSTN No.: {invoiceData.gstNumber}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Right Side: Invoice Details */}
+            <Box textAlign="right" sx={{ minWidth: 240, mt: { xs: 2, sm: 0 } }}>
+              <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                TAX INVOICE
+              </Typography>
+              <Typography variant="body2">
+                Invoice No: {invoiceData.invoiceNo}
+              </Typography>
+              <Typography variant="body2">
+                Date: {invoiceData.invoiceDate}
+              </Typography>
+              <Typography variant="body2">
+                Payment Type: {invoiceData.paymentType}
+              </Typography>
+              <Typography variant="body2">
+                Receipt No: {invoiceData.receiptNo}
               </Typography>
             </Box>
-          ))}
-        </CardContent>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Bill To & Vendor Details */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            flexWrap="wrap"
+            sx={{ mb: 2 }}
+          >
+            <Box sx={{ minWidth: 240, mr: 2, mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
+                Bill To:
+              </Typography>
+              <Typography variant="body2">{invoiceData.billTo.name}</Typography>
+              <Typography variant="body2">
+                {invoiceData.billTo.address}
+              </Typography>
+              <Typography variant="body2">
+                GSTIN: {invoiceData.billTo.gstin}
+              </Typography>
+            </Box>
+
+            <Box sx={{ minWidth: 240, mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
+                Place of Supply:
+              </Typography>
+              <Typography variant="body2">
+                {invoiceData.placeOfSupply}
+              </Typography>
+
+              <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 2 }}>
+                Name of Supplier:
+              </Typography>
+              <Typography variant="body2">{invoiceData.vendor.name}</Typography>
+              <Typography variant="body2">
+                {invoiceData.vendor.address}
+              </Typography>
+              <Typography variant="body2">
+                Code: {invoiceData.vendor.code}
+              </Typography>
+              <Typography variant="body2">
+                SAC Code: {invoiceData.vendor.sacCode}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Table of Items */}
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                  <TableCell>S.No</TableCell>
+                  <TableCell>Code</TableCell>
+                  <TableCell>Particulars</TableCell>
+                  <TableCell>Qty</TableCell>
+                  <TableCell>Rate (₹)</TableCell>
+                  <TableCell>Taxable (₹)</TableCell>
+                  <TableCell>SGST (%)</TableCell>
+                  <TableCell>CGST (%)</TableCell>
+                  <TableCell>Amount (₹)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {invoiceData.items.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{item.sNo}</TableCell>
+                    <TableCell>{item.code}</TableCell>
+                    <TableCell>{item.particulars}</TableCell>
+                    <TableCell>{item.qty}</TableCell>
+                    <TableCell>{item.rate.toFixed(2)}</TableCell>
+                    <TableCell>{item.taxable.toFixed(2)}</TableCell>
+                    <TableCell>{item.sgst.toFixed(2)}</TableCell>
+                    <TableCell>{item.cgst.toFixed(2)}</TableCell>
+                    <TableCell>{item.amount.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* Totals */}
+          <Box sx={{ mt: 2, textAlign: "right" }}>
+            <Typography variant="body2">
+              Sub Total: ₹{invoiceData.total.subTotal.toFixed(2)}
+            </Typography>
+            <Typography variant="body2">
+              SGST: ₹{invoiceData.total.sgst.toFixed(2)}
+            </Typography>
+            <Typography variant="body2">
+              CGST: ₹{invoiceData.total.cgst.toFixed(2)}
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: "bold", mt: 1 }}>
+              Total: ₹{invoiceData.total.totalAmount.toFixed(2)}
+            </Typography>
+            <Typography variant="body2">
+              In Words: {invoiceData.total.totalInWords}
+            </Typography>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Footer / Thank You Note */}
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            <strong>Thank you for using OLF Foods!</strong>
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            If you have any questions about this invoice, please contact
+            support@example.com
+          </Typography>
+        </Box>
       </Card>
     </Box>
   );

@@ -12,7 +12,8 @@ import {
   FormControlLabel,
   Checkbox,
   Chip,
-  Drawer
+  Drawer,
+  CircularProgress
 } from '@mui/material';
 
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -45,17 +46,18 @@ export default function RegistrationForm() {
       rest_time_finish: '',
       operating_days: "{FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE}", // Default all false
       media_url: "{}" ,// Media URLs stored in JSON-like format
-      vendor_id:userData?.vendor_id
+      vendor_id: userData?.vendor_id || userData?.id
   });
 
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+
   const [confirmAcn, setConfirmAcn] = useState<string>(""); 
   const [operatingDays, setOperatingDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [mediaInput, setMediaInput] = useState<string>("");
   const [selectAll, setSelectAll] = useState<boolean>(false);
-
-  const [stations,setstations]=useState<any>([]);
+  const [searchTerm, setSearchTerm] = useState<any>("a");
+  const [debouncedSearch, setDebouncedSearch] = useState<any>("");
+  const [selectedStation, setSelectedStation] = useState<any>(null);
 
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false); // State for drawer
@@ -123,20 +125,61 @@ toggleDrawer(true);
   useEffect(() => {
       setFormState((prevState) => ({
           ...prevState,
-          station_id: selectedStation?.station_id || '',
-          vendor_id:userData?.vendor_id
+          vendor_id:userData?.vendor_id || userData?.id
       }));
   }, [selectedStation]);
 
 
-  console.log(formState)
-  useEffect(()=>{
-    const getdata = async()=>{
-      const res  = await axiosInstance.get('/stations');
-      setstations(res.data.data.rows);
-    }
-    getdata();
-  },[])
+  useEffect(() => {
+    const handler = setTimeout(() => {
+        setDebouncedSearch(searchTerm);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(handler);
+}, [searchTerm]);
+
+// Fetch stations from backend API
+useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Replace useQuery with useEffect for fetching stations
+  const [stations, setStations] = useState<any>([]);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetchStations = async () => {
+      if (!debouncedSearch) {
+        setStations([]);
+        return;
+      }
+      setIsFetching(true);
+      try {
+        const response = await axiosInstance.get(`/searchstationname/${debouncedSearch}`);
+        setStations(response?.data || []);
+      } catch (error) {
+        console.error(error);
+        setStations([]);
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchStations();
+  }, [debouncedSearch]);
+
+  const handleStationSelect = (_: any, newValue: any) => {
+    setSelectedStation(newValue);
+    setFormState((prevState) => ({
+      ...prevState,
+      station_id: newValue ? newValue.stationId : 0,
+    }));
+  };
+
 
 
 
@@ -160,7 +203,7 @@ toggleDrawer(true);
   const handleSelectAllToggle = () => {
       const newSelectAll = !selectAll;
       setSelectAll(newSelectAll);
-
+ 
       const updatedDays = weekDays.map(() => newSelectAll);
       setOperatingDays(updatedDays);
 
@@ -217,20 +260,30 @@ toggleDrawer(true);
                     <TextField
                         fullWidth
                         label="Owner's name"
-                        name="bank_owner"
-                        value={formState.bank_owner || ''}
+                        name="owner_name"
+                        value={formState.owner_name || ''}
                         onChange={handleChange}
                     />
-                    {stations.length > 0 && <Autocomplete
+                      <Autocomplete
                         options={stations}
-                        getOptionLabel={(option) => option.station_name}
+                        getOptionLabel={(option) => `${option.stationName} (${option.stationCode})`}
                         value={selectedStation}
-                        onChange={(_, newValue) => setSelectedStation(newValue)}
+                        onChange={handleStationSelect}
+                        loading={isFetching}
                         renderInput={(params) => (
-                            <TextField {...params} label="Select Station" variant="outlined" />
+                            <TextField
+                                {...params}
+                                label="Search Station"
+                                variant="outlined"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: isFetching ? <CircularProgress size={20} /> : null,
+                                }}
+                            />
                         )}
-                        clearOnEscape
-                    />}
+                    />
                     <TextField
                         fullWidth
                         label="Street"
