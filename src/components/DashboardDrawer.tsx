@@ -25,7 +25,7 @@ import {
   CompareArrows,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { WatchIcon } from 'lucide-react';
+import { LogOut, WatchIcon } from 'lucide-react';
 import React from 'react';
 
 interface DashboardDrawerProps {
@@ -34,7 +34,7 @@ interface DashboardDrawerProps {
 }
 
 const drawerItems = [
-  { text: 'Vendor Profile', icon: <Person4Rounded />, path: '/dashboard/profile' },
+  { text: 'Vendor Profile', icon: <Person4Rounded />, path: '/dashboard/profil e' },
   { text: 'Order History', icon: <CompareArrows />, path: '/dashboard/order-history' },
   { text: 'Payment History', icon: <Money/>, path: '/dashboard/money' },
   { text: 'Offers', icon: <Discount />, path: '/dashboard/offers' },
@@ -64,9 +64,17 @@ export default function DashboardDrawer({ open, onClose }: DashboardDrawerProps)
           >
             <ListItemIcon sx={{color:'#EB8041'}}>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />
-        
+             
           </ListItem>
         ))}
+        <ListItem
+        sx={{borderBottom:'1px solid #eee',py:1,gap:-1}}
+        onClick={() => {
+          navigate("/");
+        }}>
+<ListItemIcon sx={{color:'#EB8041'}}><LogOut/></ListItemIcon>
+<ListItemText primary="Logout" />
+        </ListItem>
       </List>
     </Drawer>
   );

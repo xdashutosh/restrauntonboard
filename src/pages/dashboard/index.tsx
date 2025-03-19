@@ -79,12 +79,12 @@ export default function Dashboard() {
       <Box sx={{ mt: 2,  }}>
         <Routes>
           <Route path="/" element={<HomePage restdata={restdata} />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/reports" element={<ReportsPage restdata={restdata} />} />
+          <Route path="/orders" element={<OrdersPage restdata={restdata} />} />
           <Route path="/menu" element={<MenuPage restdata={restdata} />} />
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/closer" element={<Closer />} />
-          <Route path="/delboy" element={<Delboy />} />
+          <Route path="/delboy" element={<Delboy restdata={restdata}  />} />
           <Route path="/queries" element={<Queries />} />
           <Route path="/chat/:id" element={<Query />} />
           <Route path="/offers" element={<Offers/>} />

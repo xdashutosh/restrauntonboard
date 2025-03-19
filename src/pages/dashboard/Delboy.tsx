@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -19,69 +19,42 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import axiosInstance from '../../interceptor/axiosInstance';
+import { useToast } from '../../hooks/use-toast';
 
-// Dummy data for delivery boys
-interface DeliveryBoy {
-  id: number;
-  name: string;
-  phone: string;
-  passExpiry: string;
-  deliveries: number;
-  rating: number;
-  avatarUrl: string;
+
+interface props {
+  restdata:any;
 }
 
-const dummyDeliveryBoys: DeliveryBoy[] = [
-  {
-    id: 1,
-    name: 'Rohan Sharma',
-    phone: '+91 9876543210',
-    passExpiry: '15/02/2025',
-    deliveries: 128,
-    rating: 4.5,
-    avatarUrl: 'https://via.placeholder.com/48x48?text=RS',
-  },
-  {
-    id: 2,
-    name: 'Manoj Kumar',
-    phone: '+91 9876543210',
-    passExpiry: '15/02/2025',
-    deliveries: 128,
-    rating: 4.5,
-    avatarUrl: 'https://via.placeholder.com/48x48?text=MK',
-  },
-  {
-    id: 3,
-    name: 'Mohan Sharma',
-    phone: '+91 9876543210',
-    passExpiry: '15/02/2025',
-    deliveries: 128,
-    rating: 4.5,
-    avatarUrl: 'https://via.placeholder.com/48x48?text=MS',
-  },
-  {
-    id: 4,
-    name: 'Rahul Rastogi',
-    phone: '+91 9876543210',
-    passExpiry: '15/02/2025',
-    deliveries: 128,
-    rating: 4.5,
-    avatarUrl: 'https://via.placeholder.com/48x48?text=RR',
-  },
-];
-
-const Delboy: React.FC = () => {
+const Delboy: React.FC<props> = ({restdata}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Dialog open/close state
   const [openDialog, setOpenDialog] = useState(false);
-
+  const { toast } = useToast();
   // New Delivery Boy form states
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newPassExpiry, setNewPassExpiry] = useState('');
-  const [newAvatarUrl, setNewAvatarUrl] = useState('');
+  const [name, setname] = useState('');
+  const [phone, setphone] = useState('');
+  const [docs_exp, setdocs_exp] = useState('');
+  const [docs, setdocs] = useState('');
+  const [aadhar, setaadhar] = useState<any>(null);
+  const [del_profile, setdel_profile] = useState('');
+  const [Delboys,setdelboys]=useState<any>([]);
+console.log(restdata);
+  useEffect(()=>{
+     const getdata = async()=>{
+       try {
+         const res = await axiosInstance.get(`/dels/?res_id=${restdata?.res_id}`);
+ console.log(res?.data?.data);
+ setdelboys(res?.data?.data?.rows);
+       } catch (error) {
+         
+       }
+     }
+     getdata();
+   },[restdata])
 
   const handleOpenDialog = () => {
     setOpenDialog(true);
@@ -90,21 +63,24 @@ const Delboy: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     // Reset form fields when dialog closes
-    setNewName('');
-    setNewPhone('');
-    setNewPassExpiry('');
-    setNewAvatarUrl('');
+    setname('');
+    setphone('');
+    setdocs_exp('');
+    setdel_profile('');
   };
 
-  const handleSubmit = () => {
-    // In real app, you would send data to backend or update global state
-    console.log({
-      newName,
-      newPhone,
-      newPassExpiry,
-      newAvatarUrl,
-    });
+  const handleSubmit = async() => {
+try {
+  await axiosInstance.post("/del",{name,phone,docs,docs_exp,aadhar,del_profile,"res_id":restdata?.res_id})
     handleCloseDialog();
+} catch (error) {
+  toast({
+    title:error.message,
+    // description: "Please enter a valid 10-digit phone number",
+    variant: "destructive"
+  });
+}
+    
   };
 
   return (
@@ -141,9 +117,9 @@ const Delboy: React.FC = () => {
 
       {/* List of Delivery Boys */}
       <Stack spacing={2}>
-        {dummyDeliveryBoys.map((boy) => (
+        {Delboys?.map((boy) => (
           <Card
-            key={boy.id}
+            key={boy.del_id}
             sx={{
               display: 'flex',
               p: 2,
@@ -154,9 +130,10 @@ const Delboy: React.FC = () => {
           >
             {/* Avatar */}
             <Avatar
-              src={boy.avatarUrl}
+              src={boy.del_profile}
               alt={boy.name}
-              sx={{ width: 48, height: 48, mr: { xs: 0, sm: 2 }, mb: { xs: 1, sm: 0 } }}
+              sx={{height:50,width:50,objectFit:'contain'}}
+              // sx={{ width: 48, height: 48, mr: { xs: 0, sm: 2 }, mb: { xs: 1, sm: 0 } }}
             />
 
             {/* Main content */}
@@ -175,8 +152,8 @@ const Delboy: React.FC = () => {
                   {boy.name}
                 </Typography>
                 <Typography variant="body2">{boy.phone}</Typography>
-                <Typography variant="body2">Pass Expiry Date: {boy.passExpiry}</Typography>
-                <Typography variant="body2">No. of Deliveries: {boy.deliveries}</Typography>
+                <Typography variant="body2">Pass Expiry Date: {boy.docs_exp}</Typography>
+                <Typography variant="body2">No. of Deliveries: {boy.total_del}</Typography>
               </Box>
 
               {/* Rating on the right (or below on mobile) */}
@@ -188,7 +165,7 @@ const Delboy: React.FC = () => {
                 }}
               >
                 <Rating
-                  name={`rating-${boy.id}`}
+                  name={`rating-${boy.res_id}`}
                   value={boy.rating}
                   precision={0.5}
                   readOnly
@@ -200,7 +177,7 @@ const Delboy: React.FC = () => {
             </CardContent>
 
             
-              <EditIcon onClick={() => alert(`Edit ${boy.name}`)} />
+              {/* <EditIcon onClick={() => alert(`Edit ${boy.name}`)} /> */}
           </Card>
         ))}
       </Stack>
@@ -218,29 +195,47 @@ const Delboy: React.FC = () => {
             <TextField
               fullWidth
               label="Full Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              value={name}
+              onChange={(e) => setname(e.target.value)}
             />
             <TextField
               fullWidth
               label="Phone Number"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
+              value={phone}
+              onChange={(e) => setphone(e.target.value)}
             />
             <TextField
               fullWidth
+              label="Pass doc"
+              value={docs}
+              onChange={(e) => setdocs(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              type='date'
               label="Pass Expiry Date"
               placeholder="DD/MM/YYYY"
-              value={newPassExpiry}
-              onChange={(e) => setNewPassExpiry(e.target.value)}
+              value={docs_exp}
+              onChange={(e) => setdocs_exp(e.target.value)}
+              InputLabelProps={{ shrink: true }}
             />
+
             <TextField
               fullWidth
               label="Profile Image URL"
               placeholder="https://example.com/avatar.jpg"
-              value={newAvatarUrl}
-              onChange={(e) => setNewAvatarUrl(e.target.value)}
+              value={del_profile}
+              onChange={(e) => setdel_profile(e.target.value)}
             />
+
+            <TextField
+              fullWidth
+              label="Aadhar number"
+              placeholder="https://example.com/avatar.jpg"
+              value={aadhar}
+              onChange={(e) => setaadhar(e.target.value)}
+            />
+             
             <Box>
              
             </Box>
@@ -250,7 +245,7 @@ const Delboy: React.FC = () => {
           <Button onClick={handleCloseDialog} color="inherit">
             Cancel
           </Button>
-          <Button
+          <Button 
             variant="contained"
             sx={{
               backgroundColor: '#ff9800',

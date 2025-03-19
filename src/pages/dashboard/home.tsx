@@ -24,19 +24,37 @@ interface props {
 
 const Home: React.FC<props> = ({restdata}) => {
  const [station,setstation]=useState(null);
-
+const [todayorders,settodayorders]=useState<any>(null);
+const [totalamount,setTotalAmount]=useState<any>(null);
+console.log(restdata)
   useEffect(()=>{
     const getdata = async()=>{
       try {
         const res = await axiosInstance.get(`/stations/?station_id=${restdata?.station_id}`);
-        setstation(res?.data?.data?.rows[0]?.station_name)
-
+        setstation(res?.data?.data?.rows[0]?.station_name);
+         const res1 = await axiosInstance.get(`/orders/?res_id=${restdata?.res_id}`);
+              const apiOrders = res1?.data?.data?.rows || []; // assuming this is an array
+              console.log(apiOrders)
+              const todayISO = new Date().toISOString().slice(0, 10);
+              const todaysOrders = apiOrders.filter(order =>
+                order.created_at.slice(0, 10) === todayISO
+              );
+        
+              settodayorders(todaysOrders.length);
+        
+              const totalAmount = todaysOrders.reduce(
+                (sum, order) => sum + (Number(order.amount) || 0),
+                0
+              );
+              setTotalAmount(totalAmount);
       } catch (error) {
         
       }
     }
     getdata();
   },[restdata])
+
+  console.log(restdata);
   return (
     <Box sx={{ width: "100%" }}>
       {/* Restaurant Header */}
@@ -83,7 +101,7 @@ const Home: React.FC<props> = ({restdata}) => {
                 Today's Revenue
               </Typography>
               <Typography fontFamily={"font-katibeh"} variant="h4" fontWeight={600} color="green">
-                ₹2,500
+                ₹{totalamount}
               </Typography>
             </Card>
           </Grid>
@@ -93,7 +111,7 @@ const Home: React.FC<props> = ({restdata}) => {
                 No. of Orders
               </Typography>
               <Typography fontFamily={"font-katibeh"} variant="h4" fontWeight={600} color="green">
-                90
+                {todayorders}
               </Typography>
             </Card>
           </Grid>

@@ -16,6 +16,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Avatar,
+  Rating,
 } from '@mui/material';
 import { AccessTime, Visibility, CheckCircle } from '@mui/icons-material';
 import { toggleOnline } from '../../store/restaurantSlice';
@@ -44,7 +46,8 @@ interface OrderUI {
   name:any,
   phone:any,
   train_name:any,
-  station_id:any
+  station_id:any,
+  status:any
 }
 
 interface OrdersData {
@@ -56,7 +59,11 @@ interface OrdersData {
 const statusLabels: string[] = ['Preparing', 'Out for Delivery', 'Delivered'];
 const statusKeys: (keyof OrdersData)[] = ['preparing', 'outForDelivery', 'delivered'];
 
-const Orders: React.FC = () => {
+interface props {
+  restdata:any;
+}
+
+const Orders: React.FC<props> = ({restdata}) => {
   const [tabIndex, setTabIndex] = useState<number>(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [ show,setshow]=useState(0);
@@ -130,7 +137,8 @@ const fetchOrders = async () => {
             name:order.name,
             phone:order.phone,
             train_name:order.train_name,
-            station_id:order.station_id
+            station_id:order.station_id,
+            status:order.status
           };
 
           // Categorize order based on status (1: preparing, 2: out for delivery, 3: delivered)
@@ -194,6 +202,88 @@ const fetchOrders = async () => {
       
     }
   }
+
+  const getTimeLeft = (arrivalTime: string): string => {
+if(!arrivalTime)
+{
+  return "0";
+}
+
+    const [hrs, mins, secs] = arrivalTime.split(':').map(Number);
+    const now = new Date();
+    const arrival = new Date(now);
+  
+    arrival.setHours(hrs, mins, secs, 0);
+  
+    let diffMs = arrival.getTime() - now.getTime();
+  
+    // If arrival has already passed today, count until tomorrow
+    if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
+  
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const hoursLeft = Math.floor(totalSeconds / 3600);
+    const minutesLeft = Math.floor((totalSeconds % 3600) / 60);
+    const secondsLeft = totalSeconds % 60;
+  
+    if (hoursLeft > 0) {
+      return `${hoursLeft}:${minutesLeft.toString().padStart(2, '0')} hrs`;
+    }
+    if (minutesLeft > 0) {
+      return `${minutesLeft} min`;
+    }
+    return `${secondsLeft} sec`;
+  };
+  
+  const getMinutesLeft = (arrivalTime: string): any => {
+    if(arrivalTime)
+      {
+      
+    const [hours, mins, secs] = arrivalTime.split(':').map(Number);
+    const now = new Date();
+    const arrival = new Date(now);
+  
+    arrival.setHours(hours, mins, secs, 0);
+  
+    const diffMs = arrival.getTime() - now.getTime();
+    const minutesLeft = Math.floor(diffMs / (1000 * 60));
+  
+    return minutesLeft > 0 ? minutesLeft : 0;
+      }
+
+  };
+
+
+const [delboys,setdelboys]=useState<any>([]);
+    useEffect(()=>{
+       const getdata = async()=>{
+         try {
+           const res = await axiosInstance.get(`/dels/?res_id=${restdata?.res_id}`);
+   console.log(res?.data?.data);
+   setdelboys(res?.data?.data?.rows);
+         } catch (error) {
+           
+         }
+       }
+       getdata();
+     },[restdata])
+  
+     const [currentoid,setcurrentoid]=useState<any>(null);
+     const [orderstatus,setorderstatus]=useState<any>(null)
+
+const handleAssign = async(del_id)=>{
+  try {
+    const res =await axiosInstance.put(`/order/${currentoid}`,{del_id,status:2});
+    console.log(res?.data);
+    setOpenDeliveryDialog(false)
+    fetchOrders();
+
+  } catch (error) {
+    
+  }
+}
+
+console.log(orderstatus)
+
   return (
     <Box sx={{ width: '100%' }}>
       <Card
@@ -280,12 +370,7 @@ const fetchOrders = async () => {
 
 
 
-
-
-
-
-
-{show==0?
+{show==0 ?
 
 
       <Stack px={2}>
@@ -335,14 +420,7 @@ const fetchOrders = async () => {
                     <Typography fontFamily="font-katibeh" variant="subtitle2" color="text.secondary">
                       Order ID: <b>#{order.id}</b>
                     </Typography>
-                    {order.timeLeft && (
-                      <Chip
-                        icon={<AccessTime fontSize="small" />}
-                        label={order.timeLeft}
-                        color="warning"
-                        size="small"
-                      />
-                    )}
+                  
                   </Stack>
 
                   <Divider sx={{ my: 1 }} />
@@ -393,7 +471,7 @@ const fetchOrders = async () => {
                       fullWidth
                       sx={{ padding: 2, bgcolor: '#E87C4E', '&:hover': { bgcolor: '#D86E47' } }}
                       startIcon={<CheckCircle />}
-                      onClick={() => setOpenDeliveryDialog(true)}
+                      onClick={() =>{ setOpenDeliveryDialog(true); setcurrentoid(order?.id); setorderstatus(order?.status) }}
                     >
                       <Typography fontFamily="font-katibeh">Order Ready</Typography>
                     </Button>
@@ -414,6 +492,16 @@ const fetchOrders = async () => {
         <DialogContent dividers>
           {/* Dummy train data */}
           <Stack spacing={1}>
+           {getMinutesLeft(traindet?.arrivalTime)>0
+           &&
+          <Chip
+          icon={<AccessTime fontSize="large" />}
+          label={`${getTimeLeft(traindet?.arrivalTime)} left` }
+          color="warning"
+          size="small"
+          />
+        }
+        
             <Typography variant="body1">Train Name: {traindet?.orderdet?.train_name}</Typography>
             <Typography variant="body1">Train Number: {traindet?.orderdet?.train_number}</Typography>
             <Typography variant="body1">Departure Time: 10:00 AM</Typography>
@@ -421,6 +509,7 @@ const fetchOrders = async () => {
             <Typography variant="body1">ETA: {traindet?.arrivalTime}</Typography>
             <Typography variant="body1">DTA: {traindet?.departureTime}</Typography>
             <Typography variant="body1">HALT TIME: {traindet?.haltTime}</Typography>
+          
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -431,14 +520,61 @@ const fetchOrders = async () => {
       {/* Dialog for Delivery Boys */}
       <Dialog open={openDeliveryDialog} onClose={() => setOpenDeliveryDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Delivery Boys</DialogTitle>
-        <DialogContent dividers>
-          {/* Dummy list of delivery boys */}
-          <Stack spacing={1}>
-            <Typography variant="body1">John Doe</Typography>
-            <Typography variant="body1">Jane Smith</Typography>
-            <Typography variant="body1">Bob Johnson</Typography>
-          </Stack>
-        </DialogContent>
+        <Stack spacing={2}>
+        {delboys?.map((boy) => (
+          <Card
+            key={boy.del_id}
+            sx={{
+              display: 'flex',
+              p: 2,
+              justifyContent:'space-between',
+              gap:1,
+              flexDirection: { xs: 'row', sm: 'row' },
+            }}
+          >
+            {/* Avatar */}
+            <Avatar
+              src={boy.del_profile}
+              alt={boy.name}
+              sx={{height:50,width:50,objectFit:'contain'}}
+              // sx={{ width: 48, height: 48, mr: { xs: 0, sm: 2 }, mb: { xs: 1, sm: 0 } }}
+            />
+
+            {/* Main content */}
+            <CardContent
+              sx={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                p: 0,
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {boy.name}
+                </Typography>
+                <Typography variant="body2">{boy.phone}</Typography>
+                <Typography variant="body2">Pass Expiry Date: {boy.docs_exp}</Typography>
+                <Typography variant="body2">No. of Deliveries: {boy.total_del}</Typography>
+              </Box>
+
+              {/* Rating on the right (or below on mobile) */}
+              {orderstatus==1?
+               <Button sx={{mt:2}} variant='contained' onClick={()=>handleAssign(boy?.del_id)}>Assign order</Button>
+               :
+               <Button sx={{mt:2}} variant='contained' disabled={true}>Assigned</Button>
+
+              }
+            
+            </CardContent>
+
+            
+              {/* <EditIcon onClick={() => alert(`Edit ${boy.name}`)} /> */}
+          </Card>
+        ))}
+      </Stack>
         <DialogActions>
           <Button onClick={() => setOpenDeliveryDialog(false)}>Close</Button>
         </DialogActions>

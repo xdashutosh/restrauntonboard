@@ -86,18 +86,18 @@ console.log(res?.data);
 if(res?.data?.status)
 {
   dispatch(setUser(res?.data?.data?.rows[0]));
-  // toast({
-  //   title: "Success",
-  //   description: "OTP verified successfully"
-  // });
+  toast({
+    title: "Success",
+    description: "OTP verified successfully"
+  });
   navigate('/register');
 }
 else{
-  // toast({
-  //   title: "Invalid OTP",
-  //   description: "Please enter the correct OTP",
-  //   variant: "destructive"
-  // });
+  toast({
+    title: "Invalid OTP",
+    description: "Please enter the correct OTP",
+    variant: "destructive"
+  });
   seterror("Invalid Otp or expired!")
 }
   
