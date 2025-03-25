@@ -204,52 +204,49 @@ const fetchOrders = async () => {
   }
 
   const getTimeLeft = (arrivalTime: string): string => {
-if(!arrivalTime)
-{
-  return "0";
-}
+    if(!arrivalTime) {
+      return "0";
+    }
 
-    const [hrs, mins, secs] = arrivalTime.split(':').map(Number);
-    const now = new Date();
-    const arrival = new Date(now);
-  
-    arrival.setHours(hrs, mins, secs, 0);
-  
-    let diffMs = arrival.getTime() - now.getTime();
-  
-    // If arrival has already passed today, count until tomorrow
-    if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
-  
-    const totalSeconds = Math.floor(diffMs / 1000);
-    const hoursLeft = Math.floor(totalSeconds / 3600);
-    const minutesLeft = Math.floor((totalSeconds % 3600) / 60);
-    const secondsLeft = totalSeconds % 60;
-  
-    if (hoursLeft > 0) {
-      return `${hoursLeft}:${minutesLeft.toString().padStart(2, '0')} hrs`;
+    const minutes = getMinutesLeft(arrivalTime);
+    
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours}:${mins.toString().padStart(2, '0')} hrs`;
     }
-    if (minutesLeft > 0) {
-      return `${minutesLeft} min`;
+    if (minutes > 0) {
+      return `${minutes} min`;
     }
-    return `${secondsLeft} sec`;
+    return "Arriving";
   };
   
-  const getMinutesLeft = (arrivalTime: string): any => {
-    if(arrivalTime)
-      {
-      
+  const getMinutesLeft = (arrivalTime: string): number => {
+    if (!arrivalTime) {
+      return 0;
+    }
+    
+    // Parse the arrival time
     const [hours, mins, secs] = arrivalTime.split(':').map(Number);
+    
+    // Get current time
     const now = new Date();
-    const arrival = new Date(now);
-  
-    arrival.setHours(hours, mins, secs, 0);
-  
-    const diffMs = arrival.getTime() - now.getTime();
-    const minutesLeft = Math.floor(diffMs / (1000 * 60));
-  
-    return minutesLeft > 0 ? minutesLeft : 0;
-      }
-
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    
+    // Calculate total minutes for both times
+    const arrivalTotalMinutes = (hours * 60) + mins;
+    const currentTotalMinutes = (currentHours * 60) + currentMinutes;
+    
+    // Calculate difference considering 24-hour cycle
+    let minutesDifference = arrivalTotalMinutes - currentTotalMinutes;
+    
+    // If arrival time is earlier in the day than current time, it means arrival is tomorrow
+    if (minutesDifference < 0) {
+      minutesDifference += 24 * 60; // Add 24 hours in minutes
+    }
+    
+    return minutesDifference;
   };
 
 
@@ -282,7 +279,8 @@ const handleAssign = async(del_id)=>{
   }
 }
 
-console.log(orderstatus)
+console.log(traindet?.arrivalTime)
+console.log(getMinutesLeft(traindet?.arrivalTime))
 
   return (
     <Box sx={{ width: '100%' }}>

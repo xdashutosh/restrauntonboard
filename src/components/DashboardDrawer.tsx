@@ -34,7 +34,7 @@ interface DashboardDrawerProps {
 }
 
 const drawerItems = [
-  { text: 'Vendor Profile', icon: <Person4Rounded />, path: '/dashboard/profil e' },
+  { text: 'Vendor Profile', icon: <Person4Rounded />, path: '/dashboard/profile' },
   { text: 'Order History', icon: <CompareArrows />, path: '/dashboard/order-history' },
   { text: 'Payment History', icon: <Money/>, path: '/dashboard/money' },
   { text: 'Offers', icon: <Discount />, path: '/dashboard/offers' },
