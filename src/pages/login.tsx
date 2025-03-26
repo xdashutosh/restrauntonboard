@@ -114,7 +114,7 @@ else{
       backgroundSize: "cover",
       backgroundPosition: "center",
     }}>
-      <Card sx={{ width: '100%', height: '50vh', borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
+      <Card sx={{ width: '100%', height: '70vh', borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
         <CardContent sx={{ p: 2 }}>
           <Stack>
             <Typography fontFamily={"font-katibeh"} fontSize={40} gutterBottom>
