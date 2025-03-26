@@ -94,7 +94,7 @@ const fetchOrders = async () => {
       // Then, fetch orders for that restaurant
       const res1 = await axiosInstance.get(`/orders/?res_id=${res_id}`);
       const apiOrders = res1?.data?.data?.rows; // assuming this is an array
-      
+      console.log(apiOrders)
       // Mapping for payment mode
       const paymentModeMapping: { [key: number]: string } = {
         1: "Online",
@@ -133,10 +133,10 @@ const fetchOrders = async () => {
               : [],
             paymentMode: paymentModeMapping[order.mode] || "",
             total: order.amount,
-            train_number:order.train_number,
+            train_number:order.trainnumber,
             name:order.name,
             phone:order.phone,
-            train_name:order.train_name,
+            train_name:order.trainname,
             station_id:order.station_id,
             status:order.status
           };
@@ -173,9 +173,11 @@ const fetchOrders = async () => {
   const handleshowtrain = async(orderdet)=>{
     setOpenTrainDialog(true);
     try {
+      console.log(orderdet)
       const res = await axiosInstance.get(`/traindetail/${Number(orderdet?.train_number)}`);
+      
       const thedata = res?.data?.trainRoutes?.find(route => route.stationId === orderdet.station_id);
-      console.log(orderdet);
+
       settraindet({...thedata,orderdet})
 
     } catch (error) {
@@ -279,7 +281,7 @@ const handleAssign = async(del_id)=>{
   }
 }
 
-console.log(traindet?.arrivalTime)
+console.log(traindet)
 console.log(getMinutesLeft(traindet?.arrivalTime))
 
   return (
