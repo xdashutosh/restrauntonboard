@@ -100,6 +100,7 @@ import {
             }));
         }
     };
+    console.log(formState)
   
     const handleCreateDish = async () => {
       setSubmitting(true);
