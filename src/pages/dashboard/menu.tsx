@@ -1,19 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { 
-  Card, 
-  CardContent, 
   Typography, 
   IconButton, 
   Box, 
-  Tabs, 
-  Tab, 
   Switch, 
   Button, 
   Stack, 
-  Select, 
-  MenuItem, 
-  FormControl, 
-  InputLabel,
   Avatar,
   Chip,
   Badge,
@@ -26,62 +18,98 @@ import {
   Divider,
   Grid,
   Paper,
-  alpha
+  alpha,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from "@mui/material";
 import { 
   Add, 
-  Fastfood, 
   FilterList, 
   Search, 
   RestaurantMenu, 
-  LocalDining,
   SearchOff,
   CurrencyRupee,
-  Check,
-  ClearAll
+  ClearAll,
+  Delete
 } from "@mui/icons-material";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../interceptor/axiosInstance";
 import { RootState } from "../../store/store";
 import AddDish from "../../components/ui/AddDish";
 
+// Define the new item interface based on the updated API response
+interface MenuItem {
+  item_id: number;
+  item_name: string;
+  base_price: number;
+  status: number;
+  outlet_id: number;
+  description: string;
+  vendor_price: number;
+  opening_time: string;
+  closing_time: string;
+  is_vegeterian: number;
+  image: string;
+  cuisine: string;
+  food_type: string;
+  bulk_only: number;
+  customisations: any;
+  customisation_defaultBasePrice: any;
+  tax: number;
+  station_code: string;
+}
+
 interface MenuProps {
   restdata: any;
 }
 
 const Menu: React.FC<MenuProps> = ({ restdata }) => {
-  const [dishes, setDishes] = useState<any>([]);
-  const [filteredDishes, setFilteredDishes] = useState<any>([]);
-  const [foodTypes, setFoodTypes] = useState<any>([]);
-  const [dishCategories, setDishCategories] = useState<any>([]);
-  const [selectedFoodType, setSelectedFoodType] = useState<any>("all");
-  const [selectedCategory, setSelectedCategory] = useState<any>("all");
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
+  const [cuisineTypes, setCuisineTypes] = useState<string[]>([]);
+  const [foodTypes, setFoodTypes] = useState<string[]>([]);
+  const [selectedCuisine, setSelectedCuisine] = useState<string>("all");
+  const [selectedFoodType, setSelectedFoodType] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [stockChanging, setStockChanging] = useState<number | null>(null);
+  const [statusChanging, setStatusChanging] = useState<number | null>(null);
+  
+  // New state for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const userData = useSelector((state: RootState) => state?.auth?.userData);
+  const outletid = useSelector((state: RootState) => state.outlet_id);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await axiosInstance.get(`/restraunts/?vendor_id=${userData?.vendor_id}`);
-      const res1 = await axiosInstance.get(`/dishes/?res_id=${res?.data?.data?.rows[0]?.res_id}`);
+      const res = await axiosInstance.get(`/dishes/?outlet_id=${outletid?.outlet_id}`);
       
-      // Sort by stock status, in-stock items first
-      const sortedDishes = res1?.data?.data?.rows.sort((a, b) => {
-        if (a.stock === b.stock) return 0;
-        return a.stock ? -1 : 1;
+      // Sort by status, in-stock items first
+      const sortedItems = res?.data?.data?.rows.sort((a, b) => {
+        if (a.status === b.status) return 0;
+        return a.status ? -1 : 1;
       });
       
-      setDishes(sortedDishes);
-      setFilteredDishes(sortedDishes);
+      setItems(sortedItems);
+      setFilteredItems(sortedItems);
+      
+      // Extract unique cuisine and food types for filters
+      const uniqueCuisines = [...new Set(sortedItems.map(item => item.cuisine))];
+      const uniqueFoodTypes = [...new Set(sortedItems.map(item => item.food_type))];
+      
+      setCuisineTypes(uniqueCuisines);
+      setFoodTypes(uniqueFoodTypes);
     } catch (error) {
-      console.error("Error fetching dishes:", error);
+      console.error("Error fetching menu items:", error);
     } finally {
       setLoading(false);
     }
@@ -95,90 +123,104 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
   
   useEffect(() => {
     fetchData();
-  }, [userData, restdata?.id]);
-
-  useEffect(() => {
-    // Fetch food types and dish categories
-    const fetchFoodTypes = async () => {
-      try {
-        const response = await axiosInstance.get(`/food-type`);
-        setFoodTypes(response?.data?.data?.rows);
-      } catch (error) {
-        console.error("Error fetching food types:", error);
-      }
-    };
-
-    const fetchDishCategories = async () => {
-      try {
-        const response = await axiosInstance.get(`/dish-cat`);
-        setDishCategories(response?.data?.data?.rows);
-      } catch (error) {
-        console.error("Error fetching dish categories:", error);
-      }
-    };
-
-    fetchFoodTypes();
-    fetchDishCategories();
   }, []);
 
   useEffect(() => {
-    let filtered = dishes;
+    let filtered = items;
     
     // Filter by food type
     if (selectedFoodType !== "all") {
-      filtered = filtered.filter(dish => dish.food_type === parseInt(selectedFoodType));
+      filtered = filtered.filter(item => item.food_type === selectedFoodType);
     }
     
-    // Filter by category
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter(dish => dish.dish_cat_id === parseInt(selectedCategory));
+    // Filter by cuisine
+    if (selectedCuisine !== "all") {
+      filtered = filtered.filter(item => item.cuisine === selectedCuisine);
     }
     
     // Search filter
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(dish => 
-        dish.name.toLowerCase().includes(query) || 
-        (dish.description && dish.description.toLowerCase().includes(query))
+      filtered = filtered.filter(item => 
+        item.item_name.toLowerCase().includes(query) || 
+        (item.description && item.description.toLowerCase().includes(query))
       );
     }
     
-    setFilteredDishes(filtered);
-  }, [selectedFoodType, selectedCategory, dishes, searchQuery]);
+    setFilteredItems(filtered);
+  }, [selectedFoodType, selectedCuisine, items, searchQuery]);
 
-  const handleStock = async (dish_id: any, stock: any) => {
+  const handleStatus = async (itemId: number, status: number) => {
     try {
-      setStockChanging(dish_id);
-      await axiosInstance.put(`/dish/${dish_id}`, { 
-        stock: Number(stock), 
+      setStatusChanging(itemId);
+      await axiosInstance.put(`/dish/${itemId}`, { 
+        status: Number(status), 
         updated_at: new Date().toISOString() 
       });
       await fetchData();
     } catch (error) {
-      console.error("Error updating stock:", error);
+      console.error("Error updating status:", error);
     } finally {
-      setStockChanging(null);
+      setStatusChanging(null);
     }
   };
-
-  const getCategoryName = (categoryId) => {
-    const category = dishCategories.find(cat => cat.dish_cat_id === categoryId);
-    return category ? category.cat_name : "Uncategorized";
+  
+  // New handler for opening delete confirmation dialog
+  const handleDeleteClick = (itemId: number) => {
+    setItemToDelete(itemId);
+    setDeleteDialogOpen(true);
   };
   
-  const getFoodTypeName = (typeId) => {
-    const type = foodTypes.find(ft => ft.food_type_id === typeId);
-    return type ? type.food_cat : "";
+  // New handler for closing delete confirmation dialog
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
+  };
+  
+  // New handler for confirming item deletion
+  const handleConfirmDelete = async () => {
+    if (itemToDelete === null) return;
+    
+    try {
+      setDeleteLoading(true);
+      await axiosInstance.delete(`/dish/${itemToDelete}`);
+      // Close the dialog
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+      // Refresh data
+      await fetchData();
+    } catch (error) {
+      console.error("Error deleting menu item:", error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+  
+  const formatCuisineName = (cuisine: string) => {
+    return cuisine.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  };
+  
+  const formatFoodType = (foodType: string) => {
+    return foodType.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  };
+  
+  const truncateDescription = (description: string) => {
+    if (!description) return "";
+    return description.length > 20 ? `${description.substring(0, 20)}...` : description;
   };
 
   const activeFiltersCount = 
     (selectedFoodType !== "all" ? 1 : 0) + 
-    (selectedCategory !== "all" ? 1 : 0) +
+    (selectedCuisine !== "all" ? 1 : 0) +
     (searchQuery.trim() !== "" ? 1 : 0);
 
   const resetFilters = () => {
     setSelectedFoodType("all");
-    setSelectedCategory("all");
+    setSelectedCuisine("all");
     setSearchQuery("");
     setDrawerOpen(false);
   };
@@ -226,34 +268,34 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
             color={selectedFoodType === "all" ? "primary" : "default"}
             onClick={() => setSelectedFoodType("all")}
           />
-          {foodTypes?.map((ft) => (
+          {foodTypes?.map((type) => (
             <Chip 
-              key={ft.food_type_id} 
-              label={ft.food_cat}
-              variant={selectedFoodType === ft.food_type_id ? "filled" : "outlined"}
-              color={selectedFoodType === ft.food_type_id ? "primary" : "default"}
-              onClick={() => setSelectedFoodType(ft.food_type_id)}
+              key={type} 
+              label={formatFoodType(type)}
+              variant={selectedFoodType === type ? "filled" : "outlined"}
+              color={selectedFoodType === type ? "primary" : "default"}
+              onClick={() => setSelectedFoodType(type)}
             />
           ))}
         </Box>
         
         <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1}>
-          Dish Category
+          Cuisine
         </Typography>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 3 }}>
           <Chip 
             label="All" 
-            variant={selectedCategory === "all" ? "filled" : "outlined"} 
-            color={selectedCategory === "all" ? "primary" : "default"}
-            onClick={() => setSelectedCategory("all")}
+            variant={selectedCuisine === "all" ? "filled" : "outlined"} 
+            color={selectedCuisine === "all" ? "primary" : "default"}
+            onClick={() => setSelectedCuisine("all")}
           />
-          {dishCategories?.map((dc) => (
+          {cuisineTypes?.map((cuisine) => (
             <Chip 
-              key={dc.dish_cat_id} 
-              label={dc.cat_name}
-              variant={selectedCategory === dc.dish_cat_id ? "filled" : "outlined"} 
-              color={selectedCategory === dc.dish_cat_id ? "primary" : "default"}
-              onClick={() => setSelectedCategory(dc.dish_cat_id)}
+              key={cuisine} 
+              label={formatCuisineName(cuisine)}
+              variant={selectedCuisine === cuisine ? "filled" : "outlined"} 
+              color={selectedCuisine === cuisine ? "primary" : "default"}
+              onClick={() => setSelectedCuisine(cuisine)}
             />
           ))}
         </Box>
@@ -377,21 +419,21 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
           
           {/* Active filter chips */}
           <Box sx={{ display: "flex", gap: 1, overflowX: "auto", flexShrink: 0 }}>
-            {selectedFoodType !== "all" && foodTypes.length > 0 && (
+            {selectedFoodType !== "all" && (
               <Chip 
                 size="small"
-                label={`Type: ${getFoodTypeName(selectedFoodType)}`}
+                label={`Type: ${formatFoodType(selectedFoodType)}`}
                 onDelete={() => setSelectedFoodType("all")}
                 color="primary"
                 variant="outlined"
               />
             )}
             
-            {selectedCategory !== "all" && dishCategories.length > 0 && (
+            {selectedCuisine !== "all" && (
               <Chip 
                 size="small"
-                label={`Category: ${getCategoryName(selectedCategory)}`}
-                onDelete={() => setSelectedCategory("all")}
+                label={`Cuisine: ${formatCuisineName(selectedCuisine)}`}
+                onDelete={() => setSelectedCuisine("all")}
                 color="primary"
                 variant="outlined"
               />
@@ -425,17 +467,17 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
           <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "40vh" }}>
             <CircularProgress size={40} color="primary" />
           </Box>
-        ) : filteredDishes.length > 0 ? (
+        ) : filteredItems.length > 0 ? (
           <Stack spacing={2}>
-            {filteredDishes.map((dish) => (
+            {filteredItems.map((item) => (
               <Paper
-                key={dish.dish_id}
+                key={item.item_id}
                 elevation={0}
                 sx={{
                   p: 2,
                   borderRadius: 3,
                   transition: "transform 0.2s ease-in-out",
-                  opacity: dish.stock ? 1 : 0.7,
+                  opacity: item.status ? 1 : 0.7,
                   bgcolor: "white"
                 }}
               >
@@ -454,8 +496,8 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                     >
                       <Box
                         component="img"
-                        src={dish?.media_url || "https://via.placeholder.com/100"}
-                        alt={dish.name}
+                        src={item?.image || "https://via.placeholder.com/100"}
+                        alt={item.item_name}
                         sx={{
                           position: "absolute",
                           top: 0,
@@ -468,23 +510,22 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                           e.target.src = "https://via.placeholder.com/100?text=No+Image";
                         }}
                       />
-                      {dish?.food_type != null && (
-                        <Box
-                          sx={{
-                            position: "absolute",
-                            top: 4,
-                            right: 4,
-                            borderRadius: "50%",
-                            width: 20,
-                            height: 20,
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            bgcolor: dish?.food_type == 0 ? "#D6292C" : "#0A8A0A",
-                            border: "2px solid white"
-                          }}
-                        />
-                      )}
+                      {/* Veg/Non-veg indicator */}
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 4,
+                          right: 4,
+                          borderRadius: "50%",
+                          width: 20,
+                          height: 20,
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          bgcolor: item?.is_vegeterian === 1 ? "#0A8A0A" : "#D6292C",
+                          border: "2px solid white"
+                        }}
+                      />
                     </Box>
                   </Grid>
                   
@@ -492,18 +533,19 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                   <Grid item xs={6} sm={7}>
                     <Stack spacing={0.5}>
                       <Typography variant="subtitle1" fontWeight={600} sx={{ lineHeight: 1.2 }}>
-                        {dish.name}
+                        {item.item_name}
                       </Typography>
                       
                       <Stack direction="row" alignItems="center" spacing={1}>
                         <Typography variant="subtitle1" fontWeight={700} color="#3B7F4B" sx={{ display: "flex", alignItems: "center" }}>
                           <CurrencyRupee fontSize="small" sx={{ mr: 0.25 }} />
-                          {dish?.dish_price}
+                          {item?.vendor_price}
                         </Typography>
                         
-                        {dish?.dish_cat_id && (
+                        {/* Food Type and Cuisine */}
+                        <Stack direction="row" spacing={0.5}>
                           <Chip
-                            label={getCategoryName(dish.dish_cat_id)}
+                            label={formatFoodType(item.food_type)}
                             size="small"
                             sx={{ 
                               height: 20, 
@@ -512,55 +554,81 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                               color: theme.palette.primary.main
                             }}
                           />
-                        )}
+                          
+                          <Chip
+                            label={formatCuisineName(item.cuisine)}
+                            size="small"
+                            sx={{ 
+                              height: 20, 
+                              fontSize: "0.7rem",
+                              bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                              color: theme.palette.secondary.main
+                            }}
+                          />
+                        </Stack>
                       </Stack>
                       
-                      {dish?.description && (
+                      {/* Truncated Description */}
+                      {item?.description && (
                         <Typography 
                           variant="body2" 
                           color="text.secondary"
                           sx={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
                             fontSize: '0.8rem',
                             lineHeight: 1.4
                           }}
                         >
-                          {dish.description}
+                          {truncateDescription(item.description)}
                         </Typography>
                       )}
                     </Stack>
                   </Grid>
                   
-                  {/* Stock Toggle */}
-                  <Grid item xs={3} sm={3} textAlign="right">
+                  {/* Status Toggle and Delete Button */}
+                  <Grid item xs={3} sm={3}>
                     <Stack alignItems="flex-end">
                       <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
                         In Stock
                       </Typography>
-                      {stockChanging === dish.dish_id ? (
-                        <CircularProgress size={24} />
-                      ) : (
-                        <Switch
-                          edge="end"
-                          checked={Boolean(dish?.stock)}
-                          onChange={() => handleStock(dish.dish_id, dish.stock == 1 ? 0 : 1)}
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        {/* Delete Button */}
+                        <IconButton 
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(item.item_id)}
                           sx={{
-                            '& .MuiSwitch-switchBase.Mui-checked': {
-                              color: '#3B7F4B',
-                              '&:hover': {
-                                backgroundColor: alpha('#3B7F4B', 0.1),
-                              },
-                            },
-                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                              backgroundColor: '#3B7F4B',
-                            },
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                            bgcolor: 'white',
+                            '&:hover': {
+                              bgcolor: alpha('#f44336', 0.1),
+                            }
                           }}
-                        />
-                      )}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                        
+                        {/* Status Toggle */}
+                        {statusChanging === item.item_id ? (
+                          <CircularProgress size={24} />
+                        ) : (
+                          <Switch
+                            edge="end"
+                            checked={Boolean(item?.status)}
+                            onChange={() => handleStatus(item.item_id, item.status === 1 ? 0 : 1)}
+                            sx={{
+                              '& .MuiSwitch-switchBase.Mui-checked': {
+                                color: '#3B7F4B',
+                                '&:hover': {
+                                  backgroundColor: alpha('#3B7F4B', 0.1),
+                                },
+                              },
+                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                backgroundColor: '#3B7F4B',
+                              },
+                            }}
+                          />
+                        )}
+                      </Stack>
                     </Stack>
                   </Grid>
                 </Grid>
@@ -607,11 +675,46 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
         )}
       </Box>
       
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Confirm Deletion
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete this menu item? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handleCloseDeleteDialog} 
+            color="primary"
+            disabled={deleteLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmDelete} 
+            color="error" 
+            variant="contained"
+            disabled={deleteLoading}
+            startIcon={deleteLoading ? <CircularProgress size={16} color="inherit" /> : <Delete />}
+          >
+            {deleteLoading ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
       {/* Add Dish Modal */}
       <AddDish
         open={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
-        res_id={Number(restdata?.res_id)}
+        outlet_id={Number(outletid?.outlet_id)}
       />
       
       {/* Filter Drawer */}

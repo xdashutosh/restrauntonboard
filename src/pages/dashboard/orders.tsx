@@ -17,199 +17,366 @@ import {
   DialogContent,
   DialogActions,
   Avatar,
-  Rating,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Badge,
 } from '@mui/material';
-import { AccessTime, Visibility, CheckCircle } from '@mui/icons-material';
-import { toggleOnline } from '../../store/restaurantSlice';
+import { AccessTime, Visibility, CheckCircle, LocalShipping, DoneAll, Cancel } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import DashboardDrawer from '../../components/DashboardDrawer';
 import { BellIcon, MenuIcon, WalletIcon } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 import axiosInstance from '../../interceptor/axiosInstance';
 import Notification from './Notification';
 import Wallet from './Wallet';
 
-interface OrderItemUI {
+// Define interfaces for our data structure
+interface MenuItem {
   name: string;
+  item_id: number;
   quantity: number;
-  price: number;
+  descriptiom: string; // Note: this is misspelled in the API response
+  SellingPrice: number;
+  isVegetarian: boolean;
 }
 
-interface OrderUI {
-  id: string;
-  timeLeft: string;
-  items: OrderItemUI[];
-  paymentMode: string;
-  total: number;
-  train_number:any;
-  name:any,
-  phone:any,
-  train_name:any,
-  station_id:any,
-  status:any
+interface CustomerInfo {
+  customerDetails: {
+    mobile: string;
+    customerName: string;
+    alternateMobile: string;
+  }
 }
 
-interface OrdersData {
-  preparing: OrderUI[];
-  outForDelivery: OrderUI[];
-  delivered: OrderUI[];
+interface DeliveryDetails {
+  deliveryDetails: {
+    pnr: number;
+    berth: string;
+    coach: string;
+    station: string;
+    trainNo: string;
+    stationCode: string;
+    passengerCount: number;
+  }
 }
 
-const statusLabels: string[] = ['Preparing', 'Out for Delivery', 'Delivered'];
-const statusKeys: (keyof OrdersData)[] = ['preparing', 'outForDelivery', 'delivered'];
-
-interface props {
-  restdata:any;
+interface Order {
+  oid: number;
+  updated_at: string;
+  pushed: number;
+  updated_by: string;
+  booked_from: string;
+  menu_items: {
+    items: MenuItem[];
+  };
+  customer_info: CustomerInfo;
+  mode: string;
+  created_at: string;
+  delivery_date: string;
+  status: string;
+  discount_amount: number | null;
+  irctc_discount: number | null;
+  vendor_discount: number | null;
+  delivery_details: DeliveryDetails;
+  comment: string;
+  outlet_id: number;
+  outlet_name: string;
+  gst: string;
+  fssai: string;
+  phone: string;
+  fssai_valid: string;
+  address: string;
+  city: string;
+  state: string;
+  rlname: string;
+  rlphone: string;
+  rlemail: string;
+  station_name: string;
+  station_code: string;
+  del_id?: number; // Delivery person ID if assigned
 }
 
-const Orders: React.FC<props> = ({restdata}) => {
+interface DeliveryPerson {
+  del_id: number;
+  name: string;
+  phone: string;
+  docs_exp: string;
+  total_del: number;
+  del_profile: string;
+}
+
+interface TrainDetails {
+  platform: string;
+  arrivalTime: string;
+  departureTime: string;
+  haltTime: string;
+  orderDetails: Order;
+}
+
+interface Props {
+  restdata: any;
+}
+
+// Status mappings
+const STATUS_TYPES = {
+  ORDER_PREPARING: 'Preparing',
+  ORDER_PREPARED: 'Prepared',
+  ORDER_OUT_FOR_DELIVERY: 'Out for Delivery',
+  ORDER_DELIVERED: 'Delivered',
+  ORDER_PARTIALLY_DELIVERED: 'Partially Delivered',
+  ORDER_UNDELIVERED: 'Undelivered',
+  ORDER_CANCELLED: 'Cancelled'
+};
+
+// Group statuses for tabs
+const STATUS_GROUPS = {
+  'Preparing': ['ORDER_PREPARING', 'ORDER_PREPARED'],
+  'Out for Delivery': ['ORDER_OUT_FOR_DELIVERY'],
+  'Delivered': ['ORDER_DELIVERED', 'ORDER_PARTIALLY_DELIVERED', 'ORDER_UNDELIVERED', 'ORDER_CANCELLED']
+};
+
+const Orders: React.FC<Props> = ({ restdata }) => {
   const [tabIndex, setTabIndex] = useState<number>(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [ show,setshow]=useState(0);
-  const [ordersData, setOrdersData] = useState<OrdersData>({
-    preparing: [],
-    outForDelivery: [],
-    delivered: [],
-  });
-  // Dialog state for train details and delivery boys
+  const [show, setShow] = useState(0);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [openTrainDialog, setOpenTrainDialog] = useState(false);
   const [openDeliveryDialog, setOpenDeliveryDialog] = useState(false);
+  const [openStatusDialog, setOpenStatusDialog] = useState(false);
+  const [trainDetails, setTrainDetails] = useState<TrainDetails | null>(null);
+  const [deliveryPersons, setDeliveryPersons] = useState<DeliveryPerson[]>([]);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [newStatus, setNewStatus] = useState<string>('');
+  const [deldetails,setdeldetails]=useState<any>(null);
+  // New state to store delivery person data for each order
+  const [deliveryPersonsMap, setDeliveryPersonsMap] = useState<{[key: number]: DeliveryPerson}>({});
 
-  const dispatch = useDispatch();
-  const location = useLocation();
-  const userData = useSelector((state: RootState) => state?.auth?.userData);
-const [isOnline,setonline]=useState<any>(null);
+  const outletId = useSelector((state: RootState) => state.outlet_id);
 
-const [res_id,setresid]=useState<any>(null);
+  // Tab labels
+  const statusLabels = Object.keys(STATUS_GROUPS);
+
+  // Fetch orders from API
+ // Modify the fetchOrders function to filter orders where pushed === 1
 const fetchOrders = async () => {
   try {
-    // Fetch restaurant info using vendor_id from Redux
-    const res = await axiosInstance.get(`/restraunts/?vendor_id=${userData?.vendor_id}`);
+    // Fetch restaurant info
+    const res = await axiosInstance.get(`/restraunts/?outlet_id=${outletId?.outlet_id}`);
     const restaurantRows = res?.data?.data?.rows;
-    setresid(restaurantRows[0]?.res_id)
-    setonline(restaurantRows[0]?.status)
+    
     if (restaurantRows && restaurantRows.length > 0) {
-      const res_id = restaurantRows[0]?.res_id;
-      // Then, fetch orders for that restaurant
-      const res1 = await axiosInstance.get(`/orders/?res_id=${res_id}`);
-      const apiOrders = res1?.data?.data?.rows; // assuming this is an array
-      console.log(apiOrders)
-      // Mapping for payment mode
-      const paymentModeMapping: { [key: number]: string } = {
-        1: "Online",
-        2: "COD",
-      };
-
-      // Transform API orders into UI-friendly format
-      const transformedOrders: OrdersData = {
-        preparing: [],
-        outForDelivery: [],
-        delivered: [],
-      };
-
-      if (Array.isArray(apiOrders)) {
-        apiOrders.forEach((order: any) => {
-          // Calculate time left using created_at and current time for preparing orders
-          let timeLeftString = "";
-          if (order.status === 1) {
-            const orderCreationTime = new Date(order.created_at);
-            const currentTime = new Date();
-            const elapsedMinutes = (currentTime.getTime() - orderCreationTime.getTime()) / 60000;
-            const preparationTime = 15; // set preparation time (in minutes)
-            const remainingMinutes = Math.max(Math.ceil(preparationTime - elapsedMinutes), 0);
-            timeLeftString = `${remainingMinutes} mins left`;
-          }
-
-          const transformedOrder: OrderUI = {
-            id: order.oid ? order.oid.toString() : "",
-            timeLeft: timeLeftString,
-            items: order.menu_items?.items
-              ? order.menu_items.items.map((item: any) => ({
-                  name: item.name,
-                  quantity: item.qty,
-                  price: item.amount,
-                }))
-              : [],
-            paymentMode: paymentModeMapping[order.mode] || "",
-            total: order.amount,
-            train_number:order.trainnumber,
-            name:order.name,
-            phone:order.phone,
-            train_name:order.trainname,
-            station_id:order.station_id,
-            status:order.status
-          };
-
-          // Categorize order based on status (1: preparing, 2: out for delivery, 3: delivered)
-          if (order.status === 1) {
-            transformedOrders.preparing.push(transformedOrder);
-          } else if (order.status === 2) {
-            transformedOrders.outForDelivery.push(transformedOrder);
-          } else if (order.status === 3) {
-            transformedOrders.delivered.push(transformedOrder);
-          }
-        });
-      }
-
-      setOrdersData(transformedOrders);
+      
+      // Fetch orders
+      const res1 = await axiosInstance.get(`/orders/?outlet_id=${outletId?.outlet_id}`);
+      const apiOrders = res1?.data?.data?.rows || [];
+      
+      // Filter orders where pushed === 1
+      const filteredByPushed = apiOrders.filter(order => order.pushed === 1);
+      
+      // Sort orders by delivery date (closer dates first)
+      const sortedOrders = [...filteredByPushed].sort((a, b) => {
+        const dateA = new Date(a.delivery_date);
+        const dateB = new Date(b.delivery_date);
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      setOrders(sortedOrders);
+      filterOrdersByTab(tabIndex, sortedOrders);
     }
   } catch (error) {
     console.error("Error fetching orders:", error);
   }
 };
 
+  // Filter orders based on selected tab
+  const filterOrdersByTab = (index: number, ordersList: Order[] = orders) => {
+    const statusGroup = STATUS_GROUPS[statusLabels[index]];
+    const filtered = ordersList.filter(order => statusGroup.includes(order.status));
+    setFilteredOrders(filtered);
+  };
 
-  useEffect(() => {
-
-    if (userData) {
-      fetchOrders();
+  // Fetch delivery person by ID
+  const fetchDeliveryPersonById = async (delId: number) => {
+    try {
+      const res = await axiosInstance.get(`/dels/?del_id=${delId}`);
+      if (res?.data?.data?.rows && res.data.data.rows.length > 0) {
+        const deliveryPerson = res.data.data.rows[0];
+        setDeliveryPersonsMap(prevMap => ({
+          ...prevMap,
+          [delId]: deliveryPerson
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching delivery person:", error);
     }
-  }, [userData]);
+  };
 
+  // Fetch initial data
+  useEffect(() => {
+    fetchOrders();
+    fetchDeliveryPersons();
+  }, []);
 
- const[traindet,settraindet]=useState<any>(null);
+  // Update filtered orders when tab changes
+  useEffect(() => {
+    filterOrdersByTab(tabIndex);
+  }, [tabIndex, orders]);
 
-  const handleshowtrain = async(orderdet)=>{
+  // Fetch delivery person data for orders with assigned delivery persons
+  useEffect(() => {
+    filteredOrders?.forEach(order => {
+      if (order.del_id && !deliveryPersonsMap[order.del_id]) {
+        fetchDeliveryPersonById(order.del_id);
+      }
+    });
+  }, [filteredOrders]);
+
+  // Fetch delivery persons
+  const fetchDeliveryPersons = async () => {
+    try {
+      const res = await axiosInstance.get(`/dels/?outlet_id=${outletId?.outlet_id}`);
+      if (res?.data?.data?.rows) {
+        setDeliveryPersons(res.data.data.rows);
+      }
+    } catch (error) {
+      console.error("Error fetching delivery persons:", error);
+    }
+  };
+
+ 
+
+  // Show train details
+  const handleShowTrain = async (order: any) => {
+    console.log(order)
     setOpenTrainDialog(true);
     try {
-      console.log(orderdet)
-      const res = await axiosInstance.get(`/traindetail/${Number(orderdet?.train_number)}`);
-      
-      const thedata = res?.data?.trainRoutes?.find(route => route.stationId === orderdet.station_id);
-
-      settraindet({...thedata,orderdet})
-
+      const res = await axiosInstance.get(`/traindetail/${order.delivery_details.deliveryDetails.trainNo}`);
+      const thedata = res?.data?.trainRoutes?.find(
+        (route: any) => route.stationCode == order.station_code
+      );
+      console.log(thedata)
+      setTrainDetails({ 
+        ...thedata, 
+        orderDetails: order 
+      });
     } catch (error) {
-      
+      console.error("Error fetching train details:", error);
     }
-  }
+  };
 
-  console.log(traindet)
-  const handlechangeonline =  async()=>{
-    try {
-      if(isOnline==1)
-      {
-        setonline(0);
-        const res = await axiosInstance.put(`/restraunt/${res_id}`,{status:0});
-        console.log(res?.data)
-      }
-      else{
-        setonline(1);
-        const res = await axiosInstance.put(`/restraunt/${res_id}`,{status:1});
-        console.log(res?.data)
-      }
-     
-    } catch (error) {
-      
+  // Open status change dialog
+  const handleOpenStatusDialog = (order: Order) => {
+    setCurrentOrder(order);
+    setNewStatus(order.status);
+    setOpenStatusDialog(true);
+  };
+
+
+// Add a new function to push status to IRCTC
+const pushStatusToIRCTC = async (orderId, status, orderItems, deliveryPerson) => {
+  try {
+    // Prepare orderItems in the required format
+    const formattedItems = orderItems?.map(item => ({
+      itemId: item.item_id,
+      quantity: item.quantity
+    }));
+    
+    // Create the payload
+    const payload:any = {
+      status: status,
+      otp: "1234",
+      orderItems: formattedItems,
+      deliveryPersonContactNo: null,
+      deliveryPersonName: null
+    };
+    
+    // Add remarks only for ORDER_UNDELIVERED or ORDER_CANCELLED
+    if (status === "ORDER_UNDELIVERED" || status === "ORDER_CANCELLED") {
+      payload.remarks = "LAW_N_ORDER";
     }
+    
+    // Add delivery person details if available
+    if (deliveryPerson) {
+      payload.deliveryPersonContactNo = deliveryPerson.phone;
+      payload.deliveryPersonName = deliveryPerson.name;
+    }
+    
+    // Make the API call
+    const response = await axiosInstance.post(`/push-status/${orderId}`, payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error pushing status to IRCTC:", error);
+    throw error;
   }
+};
 
+  // Handle status change
+  // Handle status change
+const handleStatusChange = async (status: string) => {
+  if (!currentOrder) return;
+  
+  try {
+    // If changing to out for delivery, open delivery assignment dialog
+    if (status === 'ORDER_OUT_FOR_DELIVERY') {
+      setOpenStatusDialog(false);
+      setOpenDeliveryDialog(true);
+      return;
+    }
+    
+    // First push the status to IRCTC
+    await pushStatusToIRCTC(
+      currentOrder.oid, 
+      status, 
+      currentOrder.menu_items.items,
+      currentOrder.del_id ? deliveryPersonsMap[currentOrder.del_id] : null
+    );
+    
+    // Then update order status in our database
+    await axiosInstance.put(`/order/${currentOrder.oid}`, { status });
+    setOpenStatusDialog(false);
+    fetchOrders();
+  } catch (error) {
+    console.error("Error updating order status:", error);
+  }
+};
+
+// Assign delivery person
+const handleAssignDelivery = async (delId: number, person: any) => {
+  if (!currentOrder) return;
+  
+  try {
+    setdeldetails(person);
+    
+    // First push the status to IRCTC
+    await pushStatusToIRCTC(
+      currentOrder.oid,
+      'ORDER_OUT_FOR_DELIVERY',
+      currentOrder.menu_items.items,
+      person // Pass the full delivery person object
+    );
+    
+    // Then update our database
+    await axiosInstance.put(`/order/${currentOrder.oid}`, { 
+      del_id: delId, 
+      status: 'ORDER_OUT_FOR_DELIVERY' 
+    });
+    
+    setOpenDeliveryDialog(false);
+    fetchOrders();
+  } catch (error) {
+    console.error("Error assigning delivery person:", error);
+  }
+};
+
+ 
+
+  // Calculate time left for train arrival
   const getTimeLeft = (arrivalTime: string): string => {
-    if(!arrivalTime) {
-      return "0";
-    }
-
+    if (!arrivalTime) return "Unknown";
+    
     const minutes = getMinutesLeft(arrivalTime);
     
     if (minutes >= 60) {
@@ -217,19 +384,19 @@ const fetchOrders = async () => {
       const mins = minutes % 60;
       return `${hours}:${mins.toString().padStart(2, '0')} hrs`;
     }
+    
     if (minutes > 0) {
       return `${minutes} min`;
     }
+    
     return "Arriving";
   };
   
   const getMinutesLeft = (arrivalTime: string): number => {
-    if (!arrivalTime) {
-      return 0;
-    }
+    if (!arrivalTime) return 0;
     
     // Parse the arrival time
-    const [hours, mins, secs] = arrivalTime.split(':').map(Number);
+    const [hours, mins] = arrivalTime.split(':').map(Number);
     
     // Get current time
     const now = new Date();
@@ -251,41 +418,67 @@ const fetchOrders = async () => {
     return minutesDifference;
   };
 
+  // Format delivery date for display
+  const formatDeliveryDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    });
+  };
 
-const [delboys,setdelboys]=useState<any>([]);
-    useEffect(()=>{
-       const getdata = async()=>{
-         try {
-           const res = await axiosInstance.get(`/dels/?res_id=${restdata?.res_id}`);
-   console.log(res?.data?.data);
-   setdelboys(res?.data?.data?.rows);
-         } catch (error) {
-           
-         }
-       }
-       getdata();
-     },[restdata])
-  
-     const [currentoid,setcurrentoid]=useState<any>(null);
-     const [orderstatus,setorderstatus]=useState<any>(null)
-
-const handleAssign = async(del_id)=>{
-  try {
-    const res =await axiosInstance.put(`/order/${currentoid}`,{del_id,status:2});
-    console.log(res?.data);
-    setOpenDeliveryDialog(false)
-    fetchOrders();
-
-  } catch (error) {
+  // Calculate time left for delivery
+  const getDeliveryTimeLeft = (deliveryDate: string) => {
+    const now = new Date();
+    const delivery = new Date(deliveryDate);
+    const diffMs = delivery.getTime() - now.getTime();
     
-  }
-}
+    if (diffMs <= 0) return "Due now";
+    
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 60) {
+      return `${diffMins} min left`;
+    } else if (diffMins < 1440) { // less than a day
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      return `${hours}h ${mins}m left`;
+    } else {
+      const days = Math.floor(diffMins / 1440);
+      return `${days} day${days > 1 ? 's' : ''} left`;
+    }
+  };
 
-console.log(traindet)
-console.log(getMinutesLeft(traindet?.arrivalTime))
+  // Get status icon based on status
+  const getStatusIcon = (status: string) => {
+    switch(status) {
+      case 'ORDER_PREPARING':
+        return <AccessTime fontSize="small" />;
+      case 'ORDER_PREPARED':
+        return <CheckCircle fontSize="small" />;
+      case 'ORDER_OUT_FOR_DELIVERY':
+        return <LocalShipping fontSize="small" />;
+      case 'ORDER_DELIVERED':
+        return <DoneAll fontSize="small" />;
+      case 'ORDER_CANCELLED':
+        return <Cancel fontSize="small" />;
+      default:
+        return <AccessTime fontSize="small" />;
+    }
+  };
+
+  // Calculate total order count per tab
+  const getOrderCountByTab = (index: number) => {
+    const statusGroup = STATUS_GROUPS[statusLabels[index]];
+    return orders.filter(order => statusGroup.includes(order.status)).length;
+  };
 
   return (
     <Box sx={{ width: '100%' }}>
+      {/* Header */}
       <Card
         sx={{
           overflow: "hidden",
@@ -304,60 +497,26 @@ console.log(getMinutesLeft(traindet?.arrivalTime))
         }}
         variant="outlined"
       >
-        <Stack direction="row" width="100%" justifyContent="space-between" px={2}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              bgcolor: "#EAF2EB",
-              borderRadius: "30px",
-              px: 1,
-              py: 0.1,
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: "14px",
-                fontWeight: "600",
-                color: "#2E6734",
-              }}
-            >
-              {isOnline ? "Online" : "Offline"}
-            </Typography>
-            <Switch
-              checked={isOnline==1 || false}
-              onChange={handlechangeonline}
-              sx={{
-                "& .MuiSwitch-switchBase.Mui-checked": {
-                  color: "#2E6734",
-                },
-                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                  backgroundColor: "#2E6734",
-                },
-                "& .MuiSwitch-track": {
-                  backgroundColor: "#C0C0C0",
-                },
-              }}
-            />
-          </Box>
+        <Stack direction="row" width="100%" justifyContent="end" px={2}>
+       
           <Stack direction="row" mx={2} gap={2}>
             <IconButton
               edge="end"
-              onClick={() => setshow(1)}
+              onClick={() => setShow(1)}
               sx={{ bgcolor: '#EAE9ED', borderRadius: 2 }}
             >
-              <BellIcon color="black" />
+              <Badge badgeContent={4} color="error">
+                <BellIcon color="black" />
+              </Badge>
             </IconButton>
             <IconButton
-              color="inherit"
               edge="end"
-              onClick={() => setshow(2)}
-              sx={{ bgcolor:'#EAE9ED', borderRadius: 2 }}
+              onClick={() => setShow(2)}
+              sx={{ bgcolor: '#EAE9ED', borderRadius: 2 }}
             >
               <WalletIcon color="black" />
             </IconButton>
             <IconButton
-              color="inherit"
               edge="end"
               onClick={() => setDrawerOpen(true)}
               sx={{ bgcolor: '#EB8041', borderRadius: 2 }}
@@ -368,215 +527,335 @@ console.log(getMinutesLeft(traindet?.arrivalTime))
         </Stack>
       </Card>
 
-
-
-{show==0 ?
-
-
-      <Stack px={2}>
-        <Tabs
-          value={tabIndex}
-          onChange={(_, newIndex: number) => setTabIndex(newIndex)}
-          variant="scrollable"
-          textColor="primary"
-          indicatorColor="primary"
-          sx={{
-            bgcolor: '#F5F5F5',
-            borderRadius: 2,
-            width: '100%',
-            '& .MuiTabs-flexContainer': {
-              display: 'flex',
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            },
-            '& .MuiTabs-scroller': {
-              '&::-webkit-scrollbar': {
-                display: 'none',
+      {show === 0 ? (
+        <Stack px={2}>
+          {/* Tab Navigation */}
+          <Tabs
+            value={tabIndex}
+            onChange={(_, newIndex: number) => setTabIndex(newIndex)}
+            variant="scrollable"
+            textColor="primary"
+            indicatorColor="primary"
+            sx={{
+              bgcolor: '#F5F5F5',
+              borderRadius: 2,
+              width: '100%',
+              '& .MuiTabs-flexContainer': {
+                display: 'flex',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
               },
-            },
-          }}
-        >
-          {statusLabels.map((label, index) => (
-            <Tab
-              key={label}
-              sx={{ fontFamily: "font-katibeh" }}
-              label={<Chip label={`${label} (${ordersData[statusKeys[index]].length})`} />}
-            />
-          ))}
-        </Tabs>
+              '& .MuiTabs-scroller': {
+                '&::-webkit-scrollbar': {
+                  display: 'none',
+                },
+              },
+            }}
+          >
+            {statusLabels.map((label, index) => (
+              <Tab
+                key={label}
+                sx={{ fontFamily: "font-katibeh" }}
+                label={
+                  <Chip 
+                    label={`${label} (${getOrderCountByTab(index)})`} 
+                    color={index === tabIndex ? "primary" : "default"}
+                  />
+                }
+              />
+            ))}
+          </Tabs>
 
-        {/* Order Cards */}
-        <Box sx={{ mt: 2 }}>
-          {ordersData[statusKeys[tabIndex]].length === 0 ? (
-            <Typography fontFamily="font-katibeh" textAlign="center" color="text.secondary">
-              No orders available
-            </Typography>
-          ) : (
-            ordersData[statusKeys[tabIndex]].map((order) => (
-              <Card key={order.id} sx={{ mb: 2, borderRadius: 3 }} variant="outlined">
-                <CardContent>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography fontFamily="font-katibeh" variant="subtitle2" color="text.secondary">
-                      Order ID: <b>#{order.id}</b>
-                    </Typography>
-                  
-                  </Stack>
-
-                  <Divider sx={{ my: 1 }} />
-                  {order.items.map((item, index) => (
-                    <Stack
-                      key={index}
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      sx={{ py: 0.5 }}
-                    >
-                      <Typography fontFamily="font-katibeh">
-                        {item.name} x {item.quantity}
+          {/* Order Cards */}
+          <Box sx={{ mt: 2 }}>
+            {filteredOrders.length === 0 ? (
+              <Typography fontFamily="font-katibeh" textAlign="center" color="text.secondary">
+                No orders available
+              </Typography>
+            ) : (
+              filteredOrders?.map((order) => (
+                <Card key={order.oid} sx={{ mb: 2, borderRadius: 3 }} variant="outlined">
+                  <CardContent>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography fontFamily="font-katibeh" variant="subtitle2" color="text.secondary">
+                        Order ID: <b>#{order.oid}</b>
                       </Typography>
-                      <Typography fontFamily="font-katibeh" fontWeight="bold">
-                        ₹{item.price}
+                      <Chip
+                        icon={getStatusIcon(order.status)}
+                        label={STATUS_TYPES[order.status as keyof typeof STATUS_TYPES]}
+                        color={
+                          order.status === 'ORDER_CANCELLED' ? 'error' :
+                          order.status === 'ORDER_DELIVERED' ? 'success' :
+                          order.status === 'ORDER_OUT_FOR_DELIVERY' ? 'primary' : 'warning'
+                        }
+                        size="small"
+                      />
+                    </Stack>
+
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" mt={1}>
+                      <Typography fontFamily="font-katibeh" variant="body2">
+                        {order.customer_info.customerDetails.customerName} • {order.customer_info.customerDetails.mobile}
+                      </Typography>
+                      <Chip 
+                        icon={<AccessTime fontSize="small" />}
+                        label={getDeliveryTimeLeft(order.delivery_date)}
+                        color="primary"
+                        size="small"
+                        variant="outlined"
+                      />
+                    </Stack>
+                    
+                    <Typography fontFamily="font-katibeh" variant="caption" color="text.secondary">
+                      Delivery: {formatDeliveryDate(order.delivery_date)}
+                    </Typography>
+
+                    {/* Delivery Person Info - Display when available */}
+                    {order.del_id && deliveryPersonsMap[order.del_id] && (
+                      <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Avatar 
+                            src={deliveryPersonsMap[order.del_id].del_profile} 
+                            alt={deliveryPersonsMap[order.del_id].name}
+                            sx={{ width: 32, height: 32 }}
+                          />
+                          <Box>
+                            <Typography fontFamily="font-katibeh" variant="body2" fontWeight="bold">
+                              Delivery: {deliveryPersonsMap[order.del_id].name}
+                            </Typography>
+                            <Typography fontFamily="font-katibeh" variant="caption">
+                              {deliveryPersonsMap[order.del_id].phone}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </Box>
+                    )}
+
+                    <Divider sx={{ my: 1 }} />
+                    {order.menu_items.items.map((item, index) => (
+                      <Stack
+                        key={index}
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ py: 0.5 }}
+                      >
+                        <Box>
+                          <Typography fontFamily="font-katibeh">
+                            {item.name} x {item.quantity}
+                          </Typography>
+                          {item.isVegetarian && (
+                            <Chip label="Veg" size="small" color="success" sx={{ mr: 1, height: 20 }} />
+                          )}
+                        </Box>
+                        <Typography fontFamily="font-katibeh" fontWeight="bold">
+                          ₹{item.SellingPrice * item.quantity}
+                        </Typography>
+                      </Stack>
+                    ))}
+
+                    {order.comment && (
+                      <Typography fontFamily="font-katibeh" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        <b>Note:</b> {order.comment}
+                      </Typography>
+                    )}
+
+                    <Divider sx={{ my: 1 }} />
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography fontFamily="font-katibeh" variant="subtitle2" color="text.secondary">
+                        Payment: {order.mode}
+                      </Typography>
+                      <Typography fontFamily="font-katibeh" fontWeight="bold" color="success.main">
+                        ₹{order.menu_items.items.reduce((total, item) => total + (item.SellingPrice * item.quantity), 0)}
                       </Typography>
                     </Stack>
-                  ))}
 
-                  <Divider sx={{ my: 1 }} />
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography fontFamily="font-katibeh" variant="subtitle2" color="text.secondary">
-                      Payment Mode: {order.paymentMode}
-                    </Typography>
-                    <Typography fontFamily="font-katibeh" fontWeight="bold" color="success.main">
-                      ₹{order.total}
-                    </Typography>
-                  </Stack>
-
-                  <Stack spacing={1} mt={2}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      sx={{
-                        padding: 2,
-                        bgcolor: '#FCE9E4',
-                        color: '#D86E47',
-                        '&:hover': { bgcolor: '#F5C6A5' },
-                      }}
-                      startIcon={<Visibility />}
-                      onClick={() =>handleshowtrain(order)}
-                    >
-                      <Typography fontFamily="font-katibeh">View Train Details</Typography>
-                    </Button>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      sx={{ padding: 2, bgcolor: '#E87C4E', '&:hover': { bgcolor: '#D86E47' } }}
-                      startIcon={<CheckCircle />}
-                      onClick={() =>{ setOpenDeliveryDialog(true); setcurrentoid(order?.id); setorderstatus(order?.status) }}
-                    >
-                      <Typography fontFamily="font-katibeh">Order Ready</Typography>
-                    </Button>
-                  </Stack>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </Box>
-      </Stack>
-      :show==1?<Notification/>:<Wallet/>
-}
-      
+                    <Stack spacing={1} mt={2}>
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        sx={{
+                          padding: 2,
+                          bgcolor: '#FCE9E4',
+                          color: '#D86E47',
+                          '&:hover': { bgcolor: '#F5C6A5' },
+                        }}
+                        startIcon={<Visibility />}
+                        onClick={() => handleShowTrain(order)}
+                      >
+                        <Typography fontFamily="font-katibeh">View Train Details</Typography>
+                      </Button>
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        sx={{ padding: 2, bgcolor: '#E87C4E', '&:hover': { bgcolor: '#D86E47' } }}
+                        startIcon={<CheckCircle />}
+                        onClick={() => handleOpenStatusDialog(order)}
+                      >
+                        <Typography fontFamily="font-katibeh">Update Status</Typography>
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </Box>
+        </Stack>
+      ) : show === 1 ? (
+        <Notification />
+      ) : (
+        <Wallet />
+      )}
 
       {/* Dialog for Train Details */}
       <Dialog open={openTrainDialog} onClose={() => setOpenTrainDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Train Details</DialogTitle>
         <DialogContent dividers>
-          {/* Dummy train data */}
-          <Stack spacing={1}>
-           {getMinutesLeft(traindet?.arrivalTime)>0
-           &&
-          <Chip
-          icon={<AccessTime fontSize="large" />}
-          label={`${getTimeLeft(traindet?.arrivalTime)} left` }
-          color="warning"
-          size="small"
-          />
-        }
-        
-            <Typography variant="body1">Train Name: {traindet?.orderdet?.train_name}</Typography>
-            <Typography variant="body1">Train Number: {traindet?.orderdet?.train_number}</Typography>
-            <Typography variant="body1">Departure Time: 10:00 AM</Typography>
-            <Typography variant="body1">Platform: {traindet?.platform}</Typography>
-            <Typography variant="body1">ETA: {traindet?.arrivalTime}</Typography>
-            <Typography variant="body1">DTA: {traindet?.departureTime}</Typography>
-            <Typography variant="body1">HALT TIME: {traindet?.haltTime}</Typography>
-          
-          </Stack>
+          {trainDetails && (
+            <Stack spacing={1}>
+              {getMinutesLeft(trainDetails.arrivalTime) > 0 && (
+                <Chip
+                  icon={<AccessTime fontSize="large" />}
+                  label={`${getTimeLeft(trainDetails.arrivalTime)} left`}
+                  color="warning"
+                  size="small"
+                />
+              )}
+              
+              <Typography variant="body1">
+                Train Name: {trainDetails.orderDetails.delivery_details.deliveryDetails.trainNo}
+              </Typography>
+              <Typography variant="body1">
+                Train Number: {trainDetails.orderDetails.delivery_details.deliveryDetails.trainNo}
+              </Typography>
+              <Typography variant="body1">
+                Platform: {trainDetails.platform || 'Not assigned yet'}
+              </Typography>
+              <Typography variant="body1">
+                ETA: {trainDetails.arrivalTime || 'Not available'}
+              </Typography>
+              <Typography variant="body1">
+                DTA: {trainDetails.departureTime || 'Not available'}
+              </Typography>
+              <Typography variant="body1">
+                HALT TIME: {trainDetails.haltTime || 'Not available'}
+              </Typography>
+              
+              <Divider sx={{ my: 1 }} />
+              
+              <Typography variant="subtitle1" fontWeight="bold">
+                Passenger Details
+              </Typography>
+              <Typography variant="body2">
+                Coach: {trainDetails.orderDetails.delivery_details.deliveryDetails.coach}
+              </Typography>
+              <Typography variant="body2">
+                Berth: {trainDetails.orderDetails.delivery_details.deliveryDetails.berth}
+              </Typography>
+              <Typography variant="body2">
+                PNR: {trainDetails.orderDetails.delivery_details.deliveryDetails.pnr}
+              </Typography>
+              <Typography variant="body2">
+                Passengers: {trainDetails.orderDetails.delivery_details.deliveryDetails.passengerCount}
+              </Typography>
+            </Stack>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenTrainDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 
+      {/* Dialog for Status Change */}
+      <Dialog open={openStatusDialog} onClose={() => setOpenStatusDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Update Order Status</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              label="Status"
+            >
+              <MenuItem value="ORDER_PREPARING">Preparing</MenuItem>
+              <MenuItem value="ORDER_PREPARED">Prepared</MenuItem>
+              <MenuItem value="ORDER_OUT_FOR_DELIVERY">Out for Delivery</MenuItem>
+              <MenuItem value="ORDER_DELIVERED">Delivered</MenuItem>
+              <MenuItem value="ORDER_PARTIALLY_DELIVERED">Partially Delivered</MenuItem>
+              <MenuItem value="ORDER_UNDELIVERED">Undelivered</MenuItem>
+              <MenuItem value="ORDER_CANCELLED">Cancelled</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenStatusDialog(false)}>Cancel</Button>
+          <Button 
+            onClick={() => handleStatusChange(newStatus)}
+            variant="contained" 
+            color="primary"
+          >
+            Update
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Dialog for Delivery Boys */}
       <Dialog open={openDeliveryDialog} onClose={() => setOpenDeliveryDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Delivery Boys</DialogTitle>
-        <Stack spacing={2}>
-        {delboys?.map((boy) => (
-          <Card
-            key={boy.del_id}
-            sx={{
-              display: 'flex',
-              p: 2,
-              justifyContent:'space-between',
-              gap:1,
-              flexDirection: { xs: 'row', sm: 'row' },
-            }}
-          >
-            {/* Avatar */}
-            <Avatar
-              src={boy.del_profile}
-              alt={boy.name}
-              sx={{height:50,width:50,objectFit:'contain'}}
-              // sx={{ width: 48, height: 48, mr: { xs: 0, sm: 2 }, mb: { xs: 1, sm: 0 } }}
-            />
-
-            {/* Main content */}
-            <CardContent
-              sx={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                justifyContent: 'space-between',
-                alignItems: { xs: 'flex-start', sm: 'center' },
-                p: 0,
-              }}
-            >
-              <Box>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  {boy.name}
-                </Typography>
-                <Typography variant="body2">{boy.phone}</Typography>
-                <Typography variant="body2">Pass Expiry Date: {boy.docs_exp}</Typography>
-                <Typography variant="body2">No. of Deliveries: {boy.total_del}</Typography>
-              </Box>
-
-              {/* Rating on the right (or below on mobile) */}
-              {orderstatus==1?
-               <Button sx={{mt:2}} variant='contained' onClick={()=>handleAssign(boy?.del_id)}>Assign order</Button>
-               :
-               <Button sx={{mt:2}} variant='contained' disabled={true}>Assigned</Button>
-
-              }
-            
-            </CardContent>
-
-            
-              {/* <EditIcon onClick={() => alert(`Edit ${boy.name}`)} /> */}
-          </Card>
-        ))}
-      </Stack>
+        <DialogTitle>Select Delivery Person</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {deliveryPersons.length === 0 ? (
+              <Typography>No delivery persons available</Typography>
+            ) : (
+              deliveryPersons.map((person) => (
+                <Card
+                  key={person.del_id}
+                  sx={{
+                    display: 'flex',
+                    p: 2,
+                    justifyContent: 'space-between',
+                    gap: 1,
+                    flexDirection: { xs: 'row', sm: 'row' },
+                  }}
+                >
+                  <Avatar
+                    src={person.del_profile}
+                    alt={person.name}
+                    sx={{ height: 50, width: 50, objectFit: 'contain' }}
+                  />
+                  <CardContent
+                    sx={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      justifyContent: 'space-between',
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                      p: 0,
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        {person.name}
+                      </Typography>
+                      <Typography variant="body2">{person.phone}</Typography>
+                      <Typography variant="body2">Pass Expiry: {person.docs_exp}</Typography>
+                      <Typography variant="body2">Deliveries: {person.total_del}</Typography>
+                    </Box>
+                    <Button 
+                      sx={{ mt: 2 }} 
+                      variant="contained"
+                      onClick={() => handleAssignDelivery(person.del_id,person)}
+                    >
+                      Assign
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </Stack>
+        </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDeliveryDialog(false)}>Close</Button>
+          <Button onClick={() => setOpenDeliveryDialog(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>
 

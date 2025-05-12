@@ -1,6 +1,7 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import restaurantReducer from './restaurantSlice';
+import outletid from './outletSlice';
 import storage from 'redux-persist/lib/storage'; // defaults to localStorage for web
 import { persistStore, persistReducer } from 'redux-persist';
 
@@ -8,13 +9,14 @@ import { persistStore, persistReducer } from 'redux-persist';
 const persistConfig = {
   key: 'root', // Key for the persisted store
   storage, // Storage method (default is localStorage)
-  whitelist: ['auth', 'restaurant'], // List of slices you want to persist
+  whitelist: ['auth', 'restaurant','outlet_id'], // List of slices you want to persist
 };
 
 // Combine the reducers
 const rootReducer = combineReducers({
   auth: authReducer,
   restaurant: restaurantReducer,
+  outlet_id:outletid
 });
 
 // Create a persisted reducer

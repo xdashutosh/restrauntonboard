@@ -1,201 +1,323 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
-  Grid,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
+  Card,
+  CardContent,
+  CardHeader,
+  Button,
   TextField,
+  Typography,
+  Box,
+  CircularProgress,
+  Alert,
+  Grid
 } from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { toast } from 'react-hot-toast';
+import { format } from "date-fns";
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { Dayjs } from 'dayjs';
-
-const daysOfWeek = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import axiosInstance from '../interceptor/axiosInstance';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store/store';
 
 const Closer: React.FC = () => {
-  // Track which days are selected
-  const [selectedDays, setSelectedDays] = useState<Record<string, boolean>>(
-    daysOfWeek.reduce((acc, day) => ({ ...acc, [day]: false }), {})
-  );
-  // Track the "Select All" checkbox
-  const [selectAll, setSelectAll] = useState(false);
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
+  const [closureReason, setClosureReason] = useState("");
+  const [outletData, setOutletData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchingOutlet, setFetchingOutlet] = useState(true);
+  const outletid = useSelector((state: RootState) => state.outlet_id);
+  // Fetch outlet data from API
+  useEffect(() => {
+    const fetchOutletData = async () => {
+      try {
+        // Get outlet_id from localStorage
+      
 
-  // Opening & closing time
-  const [openingTime, setOpeningTime] = useState<Dayjs | null>(null);
-  const [closingTime, setClosingTime] = useState<Dayjs | null>(null);
+        // Fetch outlet data from API
+        const response = await axiosInstance.get(`/restraunts?outlet_id=${outletid?.outlet_id}`);
+          setFetchingOutlet(false);
+        setOutletData(response.data.data.rows[0]);
+      } catch (error) {
+        console.error("Error fetching outlet data:", error);
+        toast.error("Failed to fetch outlet data!", {
+          style: {
+            borderRadius: '10px',
+            background: 'black',
+            color: 'red',
+          },
+          duration: 4000,
+        });
+      } finally {
+        setFetchingOutlet(false);
+      }
+    };
 
-  // Particular day closer states
-  const [particularDate, setParticularDate] = useState<Dayjs | null>(null);
-  const [particularTime, setParticularTime] = useState<Dayjs | null>(null);
-  const [reason, setReason] = useState('');
+    fetchOutletData();
+  }, []);
 
-  // Handle "Select All" changes
-  const handleSelectAllChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const checked = event.target.checked;
-    setSelectAll(checked);
-    // Set all days to the same value
-    const updatedDays = daysOfWeek.reduce(
-      (acc, day) => ({ ...acc, [day]: checked }),
-      {}
+  // Get user data from localStorage
+ 
+
+  const handleActivate = async () => {
+    if (!outletData?.outlet_id) {
+      toast.error("Outlet data not found!", {
+        style: {
+          borderRadius: '10px',
+          background: 'black',
+          color: 'red',
+        },
+        duration: 4000,
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await axiosInstance.put(`/restraunt/${outletData.outlet_id}`, {
+        closing_period: null,
+        closure_reason: null,
+        updated_by: "vendor",
+        updated_at: format(new Date(), 'yyyy-MM-dd HH:mm')
+      });
+
+      toast(`Outlet Updated Successfully! `, {
+        style: {
+          borderRadius: '10px',
+          background: 'wheat',
+          color: 'red',
+        },
+        duration: 4000,
+      });
+
+      // Update local state to reflect the change
+      setOutletData({...outletData, closing_period: null, closure_reason: null});
+      
+    } catch (error) {
+      console.error("Error activating outlet:", error);
+      toast.error("Failed to activate outlet!", {
+        style: {
+          borderRadius: '10px',
+          background: 'black',
+          color: 'red',
+        },
+        duration: 4000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!fromDate || !toDate || !closureReason) {
+      toast.error("Please fill all fields", {
+        style: {
+          borderRadius: '10px',
+          background: 'black',
+          color: 'red',
+        },
+        duration: 4000,
+      });
+      return;
+    }
+
+    if (!outletData?.outlet_id) {
+      toast.error("Outlet data not found!", {
+        style: {
+          borderRadius: '10px',
+          background: 'black',
+          color: 'red',
+        },
+        duration: 4000,
+      });
+      return;
+    }
+
+    const closedFrom = format(fromDate, 'yyyy-MM-dd') + " 00:00";
+    const closedTo = format(toDate, 'yyyy-MM-dd') + " 23:59";
+
+    const payload = {
+      closing_period: JSON.stringify([
+        {
+          closedFrom,
+          closedTo
+        }
+      ]),
+      closure_reason: closureReason
+    };
+
+    setLoading(true);
+
+    try {
+      await axiosInstance.put(`/restraunt/${outletData.outlet_id}`, payload);
+      
+      toast(`Outlet Updated Successfully! `, {
+        style: {
+          borderRadius: '10px',
+          background: 'wheat',
+          color: 'red',
+        },
+        duration: 4000,
+      });
+
+      // Update local state to reflect the change
+      setOutletData({...outletData, closing_period: payload.closing_period, closure_reason: closureReason});
+
+      // Reset form
+      setFromDate(null);
+      setToDate(null);
+      setClosureReason("");
+    } catch (error) {
+      console.error("Error creating closure:", error);
+      toast.error(`Failed to create closure! ${error instanceof Error ? error.message : 'Unknown error'}`, {
+        style: {
+          borderRadius: '10px',
+          background: 'black',
+          color: 'red',
+        },
+        duration: 4000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (fetchingOutlet) {
+    return (
+      <Card sx={{ maxWidth: 800, width: '100%' }}>
+        <CardContent sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress />
+        </CardContent>
+      </Card>
     );
-    setSelectedDays(updatedDays);
-  };
+  }
 
-  // Handle individual day checkbox changes
-  const handleDayChange = (day: string) => (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const checked = event.target.checked;
-    setSelectedDays((prev) => {
-      const newState = { ...prev, [day]: checked };
-      // If all days are now checked, set selectAll = true; otherwise false
-      const allSelected = daysOfWeek.every((d) => newState[d]);
-      setSelectAll(allSelected);
-      return newState;
-    });
-  };
+  if (!outletData) {
+    return (
+      <Card sx={{ maxWidth: 800, width: '100%' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography color="error" textAlign="center">
+            Failed to load outlet data
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box
-        sx={{
-          maxWidth: 600,
-          mx: 'auto',
-          p: { xs: 2, sm: 3 },
-          border: '1px solid #f0f0f0',
-          borderRadius: 2,
-          backgroundColor: '#fff',
-        }}
-      >
-        {/* Schedule Closer heading */}
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-          Schedule Closer
-        </Typography>
+    <Card sx={{ maxWidth: 800, width: '100%' }}>
+      <CardHeader
+        title={
+          <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1565c0' }}>
+            Manage Outlet Closure
+          </Typography>
+        }
+      />
+      <CardContent sx={{ p: 3 }}>
+        {
+          outletData?.closing_period?.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography sx={{ fontWeight: 'bold' }}>
+                  This outlet is currently closed
+                </Typography>
+                {outletData.closure_reason && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Reason: {outletData.closure_reason}
+                  </Typography>
+                )}
+              </Alert>
+              <Button 
+                variant="contained"
+                color="success"
+                onClick={handleActivate} 
+                disabled={loading}
+                fullWidth
+                sx={{ py: 1.5 }}
+              >
+                {loading ? "Activating..." : "Activate Outlet"}
+              </Button>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Box>
+                <Typography sx={{ mb: 1, color: '#1976d2', fontWeight: 500 }}>
+                  Select Closure Date Range
+                </Typography>
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <DatePicker
+                        label="From Date"
+                        value={fromDate}
+                        onChange={(newValue) => setFromDate(newValue)}
+                        renderInput={(params) => <TextField {...params} fullWidth />}
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                          }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <DatePicker
+                        label="To Date"
+                        value={toDate}
+                        onChange={(newValue) => setToDate(newValue)}
+                        minDate={fromDate || undefined}
+                        renderInput={(params) => <TextField {...params} fullWidth />}
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                          }
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </LocalizationProvider>
+              </Box>
 
-        {/* Days of week checkboxes */}
-        <FormGroup row sx={{ mb: 2 }}>
-          {/* Select All */}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={selectAll}
-                onChange={handleSelectAllChange}
-                color="primary"
-              />
-            }
-            label="Select All"
-          />
-          {daysOfWeek.map((day) => (
-            <FormControlLabel
-              key={day}
-              control={
-                <Checkbox
-                  checked={selectedDays[day]}
-                  onChange={handleDayChange(day)}
-                  color="primary"
+              <Box>
+                <Typography sx={{ mb: 1, color: '#1976d2', fontWeight: 500 }}>
+                  Reason for Closure
+                </Typography>
+                <TextField
+                  fullWidth
+                  placeholder="Enter reason for closure"
+                  value={closureReason}
+                  onChange={(e) => setClosureReason(e.target.value)}
+                  variant="outlined"
                 />
-              }
-              label={day}
-              sx={{ mr: 2 }}
-            />
-          ))}
-        </FormGroup>
+              </Box>
 
-        {/* Opening & Closing time pickers */}
-        <Grid container spacing={2} sx={{ mb: 4 }}>
-          <Grid item xs={6}>
-            <TimePicker
-              label="Opening Time"
-              value={openingTime}
-              onChange={(newValue) => setOpeningTime(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
+              <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setFromDate(null);
+                    setToDate(null);
+                    setClosureReason("");
+                  }}
                   fullWidth
-                  placeholder="00:00"
-                />
-              )}
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TimePicker
-              label="Closing Time"
-              value={closingTime}
-              onChange={(newValue) => setClosingTime(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleSubmit}
+                  disabled={loading}
                   fullWidth
-                  placeholder="00:00"
-                />
-              )}
-            />
-          </Grid>
-        </Grid>
-
-        {/* Particular Day Closer heading */}
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-          Particular Day Closer
-        </Typography>
-
-        {/* Date & Time pickers + Reason */}
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <DatePicker
-              label="Select Date"
-              value={particularDate}
-              onChange={(newValue) => setParticularDate(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  placeholder="DD/MM/YYYY"
-                />
-              )}
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TimePicker
-              label="Select Time"
-              value={particularTime}
-              onChange={(newValue) => setParticularTime(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  placeholder="00:00"
-                />
-              )}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Reason"
-              placeholder="Enter your reason"
-              multiline
-              minRows={3}
-              fullWidth
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </Grid>
-        </Grid>
-      </Box>
-    </LocalizationProvider>
+                >
+                  {loading ? "Creating..." : "Create Closure"}
+                </Button>
+              </Box>
+            </Box>
+          )
+        }
+      </CardContent>
+    </Card>
   );
 };
 

@@ -77,14 +77,14 @@ const Home: React.FC<Props> = ({ restdata }) => {
   const [totalAmount, setTotalAmount] = useState<any>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+  console.log(restdata)
   useEffect(() => {
     const getdata = async () => {
       try {
-        const res = await axiosInstance.get(`/stations/?station_id=${restdata?.station_id}`);
+        const res = await axiosInstance.get(`/stations/?station_code=${restdata?.station_code}`);
         setStation(res?.data?.data?.rows[0]?.station_name);
         
-        const res1 = await axiosInstance.get(`/orders/?res_id=${restdata?.res_id}`);
+        const res1 = await axiosInstance.get(`/orders/?outlet_id=${restdata?.outlet_id}`);
         const apiOrders = res1?.data?.data?.rows || [];
         
         const todayISO = new Date().toISOString().slice(0, 10);
@@ -122,6 +122,16 @@ const Home: React.FC<Props> = ({ restdata }) => {
     day: 'numeric' 
   }).format(currentDate);
 
+  // Format opening and closing time
+  const formatTime = (time) => {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
   return (
     <Box sx={{ width: "100%", bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       {/* Restaurant Header */}
@@ -133,7 +143,7 @@ const Home: React.FC<Props> = ({ restdata }) => {
           borderBottomLeftRadius: "24px",
           borderBottomRightRadius: "24px",
           background: `linear-gradient(to bottom, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.7)), 
-                 url(${restdata?.media_url})`,
+                 url(${restdata?.logo_image})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           height: "25vh",
@@ -147,7 +157,7 @@ const Home: React.FC<Props> = ({ restdata }) => {
           <Stack spacing={1}>
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
               <Typography variant="h5" fontWeight={700} sx={{ textShadow: "0px 1px 3px rgba(0,0,0,0.8)" }}>
-                {restdata?.name}
+                {restdata?.outlet_name}
               </Typography>
               <Chip
                 icon={<Star sx={{ color: "white !important", fontSize: 16 }} />}
@@ -167,7 +177,7 @@ const Home: React.FC<Props> = ({ restdata }) => {
             <Stack direction="row" spacing={1} alignItems="center">
               <MapPinIcon size={16} />
               <Typography variant="body2">
-                Station: <strong>{station}</strong>
+                Station: <strong>{restdata?.station_name || station}</strong>
               </Typography>
             </Stack>
             
@@ -175,7 +185,7 @@ const Home: React.FC<Props> = ({ restdata }) => {
               <Stack direction="row" spacing={0.5} alignItems="center">
                 <Clock size={16} />
                 <Typography variant="body2">
-                  <strong>9:00 AM - 10:00 PM</strong>
+                  <strong>{formatTime(restdata?.opening_time)} - {formatTime(restdata?.closing_time)}</strong>
                 </Typography>
               </Stack>
               

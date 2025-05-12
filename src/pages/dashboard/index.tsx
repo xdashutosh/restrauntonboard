@@ -52,18 +52,17 @@ const navItems = [
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const userData = useSelector((state: RootState) => state?.auth?.userData);
+  const outletid = useSelector((state: RootState) => state.outlet_id);
   const [restdata,setrestdata]=useState<any>([]);
-  console.log(userData);
 
   useEffect(()=>{
     const getdata = async()=>{
-      const res = await axiosInstance.get(`/restraunts/?vendor_id=${userData?.vendor_id}`);
+      const res = await axiosInstance.get(`/restraunts`,{ params: { outlet_id: outletid?.outlet_id }});
       console.log(res?.data?.data?.rows[0]);
      setrestdata(res?.data?.data?.rows[0]);
     }
     getdata();
-    },[userData]);
+    },[]);
 
   const currentPath = location.pathname;
   const currentTabIndex = navItems.findIndex(item => 

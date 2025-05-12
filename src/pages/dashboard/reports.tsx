@@ -29,11 +29,9 @@ import {
   FileDownload, 
   Receipt, 
   KeyboardArrowDown, 
-  KeyboardArrowUp, 
   CalendarToday,
   LocationOn,
   AttachMoney,
-  ShoppingCart,
   Description,
   Close,
   Visibility
@@ -93,24 +91,139 @@ const styleElement = document.createElement('style');
 styleElement.textContent = pdfStyles;
 document.head.appendChild(styleElement);
 
+// Helper function to calculate totals for an order
+const calculateOrderTotals = (items) => {
+  if (!items || !Array.isArray(items)) return { subTotal: 0, gst: 0, totalInWords: "Zero Rupees" };
+  
+  // Calculate subtotal (sum of all items' price * quantity)
+  const subTotal = items.reduce((sum, item) => sum + (item.SellingPrice * item.quantity), 0);
+  
+  // Single GST at 5% of the selling price
+  const gstRate = 0.05; // 5%
+  const gst = subTotal * gstRate;
+  
+  // Convert total amount to words (simplified version)
+  const numberToWords = (num) => {
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    if (num === 0) return 'Zero';
+    
+    const convertLessThanThousand = (num) => {
+      if (num === 0) return '';
+      if (num < 20) return ones[num];
+      const ten = Math.floor(num / 10);
+      const one = num % 10;
+      return tens[ten] + (one !== 0 ? ' ' + ones[one] : '');
+    };
+    
+    let result = '';
+    let num1 = Math.floor(num);
+    let decimal = Math.round((num - num1) * 100);
+    
+    if (num1 >= 100000) {
+      result = convertLessThanThousand(Math.floor(num1 / 100000)) + ' Lakh ';
+      num1 %= 100000;
+    }
+    
+    if (num1 >= 1000) {
+      result += convertLessThanThousand(Math.floor(num1 / 1000)) + ' Thousand ';
+      num1 %= 1000;
+    }
+    
+    if (num1 >= 100) {
+      result += convertLessThanThousand(Math.floor(num1 / 100)) + ' Hundred ';
+      num1 %= 100;
+    }
+    
+    if (num1 > 0) {
+      result += convertLessThanThousand(num1);
+    }
+    
+    result += ' Rupees';
+    
+    if (decimal > 0) {
+      result += ' and ' + convertLessThanThousand(decimal) + ' Paise';
+    }
+    
+    return result.trim();
+  };
+  
+  const totalInWords = numberToWords(subTotal);
+  
+  return {
+    subTotal,
+    totalInWords
+  };
+};
+
 // Define a component for each invoice report
-const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceData, restdata }) => {
-  const invoiceRef = useRef<HTMLDivElement>(null);
-  const fullInvoiceRef = useRef<HTMLDivElement>(null);
+const InvoiceReport = ({ invoiceData, restdata }) => {
+  const invoiceRef = useRef(null);
+  const fullInvoiceRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Transform the order items to the format expected by the component
+  const transformItems = (menuItems) => {
+    if (!menuItems || !menuItems.items || !Array.isArray(menuItems.items)) return [];
+    
+    return menuItems.items.map((item, index) => ({
+      sNo: index + 1,
+      code: `ITM-${item.item_id || index + 1}`,
+      particulars: item.name,
+      description: item.descriptiom, // Note: typo in original data
+      qty: item.quantity,
+      rate: item.SellingPrice,
+      taxable: item.SellingPrice * item.quantity,
+      gst: 5, // Single GST at 5%
+      amount: item.SellingPrice * item.quantity * 1.05 // Price + 5% GST
+    }));
+  };
+
+  // Extract and format invoice data
+  const items = transformItems(invoiceData.menu_items);
+  const total = calculateOrderTotals(invoiceData.menu_items?.items || []);
+  
+  // Customer info for billing
+  const customerName = invoiceData.customer_info?.customerDetails?.customerName || "Guest Customer";
+  const customerMobile = invoiceData.customer_info?.customerDetails?.mobile || "N/A";
+  const deliveryAddress = invoiceData.delivery_details?.deliveryDetails 
+    ? `Train ${invoiceData.delivery_details.deliveryDetails.trainNo}, Coach ${invoiceData.delivery_details.deliveryDetails.coach}, Berth ${invoiceData.delivery_details.deliveryDetails.berth}, ${invoiceData.delivery_details.deliveryDetails.station}`
+    : "Delivery address not provided";
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    
+    // If the date is in format "05-12-2025 02:40"
+    const parts = dateString.split(" ");
+    if (parts.length === 2) {
+      const dateParts = parts[0].split("-");
+      if (dateParts.length === 3) {
+        // Convert to Date object (assuming date format is DD-MM-YYYY)
+        const date = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${parts[1]}`);
+        return date.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+      }
+    }
+    
+    // Fallback for other formats
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return dateString; // Return as is if parsing fails
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -243,7 +356,7 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
       document.body.removeChild(invoiceClone);
       
       // Save the PDF
-      pdf.save(`Invoice_${invoiceData.invoiceNo || "invoice"}.pdf`);
+      pdf.save(`Invoice_${invoiceData.oid || "invoice"}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
       // Fallback to simpler method if the advanced method fails
@@ -260,7 +373,7 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
           
           // Add image to PDF
           pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
-          pdf.save(`Invoice_${invoiceData.invoiceNo || "invoice"}.pdf`);
+          pdf.save(`Invoice_${invoiceData.oid || "invoice"}.pdf`);
         });
       } catch (fallbackError) {
         console.error("Fallback PDF generation failed:", fallbackError);
@@ -272,6 +385,26 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
   // Handle preview dialog
   const handleOpenPreview = () => setPreviewOpen(true);
   const handleClosePreview = () => setPreviewOpen(false);
+  
+  // Get order status display format
+  const getOrderStatusDisplay = (status) => {
+    switch (status) {
+      case 'ORDER_PLACED':
+        return { text: 'Order Placed', color: '#2196f3' };
+      case 'ORDER_CONFIRMED':
+        return { text: 'Confirmed', color: '#4caf50' };
+      case 'ORDER_READY':
+        return { text: 'Ready', color: '#ff9800' };
+      case 'ORDER_DELIVERED':
+        return { text: 'Delivered', color: '#4caf50' };
+      case 'ORDER_CANCELLED':
+        return { text: 'Cancelled', color: '#f44336' };
+      default:
+        return { text: status || 'Unknown', color: '#9e9e9e' };
+    }
+  };
+  
+  const orderStatus = getOrderStatusDisplay(invoiceData.status);
 
   return (
     <Card sx={{ 
@@ -296,15 +429,26 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
           </Avatar>
           <Stack>
             <Typography variant="subtitle1" fontWeight={600}>
-              Invoice #{invoiceData.invoiceNo || "N/A"}
+              Order #{invoiceData.oid || "N/A"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {formatDate(invoiceData.invoiceDate || new Date())}
+              {formatDate(invoiceData.created_at || new Date())}
             </Typography>
           </Stack>
         </Stack>
         
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Chip 
+            label={orderStatus.text} 
+            size="small" 
+            sx={{ 
+              bgcolor: `${orderStatus.color}20`, 
+              color: orderStatus.color,
+              fontWeight: 500,
+              mr: 1
+            }}
+          />
+          
           <IconButton 
             size="small" 
             onClick={handleOpenPreview}
@@ -315,17 +459,7 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
           >
             <Visibility fontSize="small" sx={{ color: "#1976d2" }} />
           </IconButton>
-          
-          <IconButton 
-            size="small" 
-            onClick={generatePDF}
-            sx={{ 
-              bgcolor: "#e8f5e9", 
-              '&:hover': { bgcolor: "#c8e6c9" } 
-            }}
-          >
-            <FileDownload fontSize="small" sx={{ color: "#388e3c" }} />
-          </IconButton>
+       
           
           <IconButton 
             size="small" 
@@ -350,17 +484,17 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
               <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
                 <Stack spacing={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Bill To
+                    Customer Details
                   </Typography>
                   <Typography variant="subtitle2" fontWeight={600}>
-                    {invoiceData.billTo?.name || restdata?.name || "Customer Name"}
+                    {customerName}
                   </Typography>
                   <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                    {invoiceData.billTo?.address || "Address not available"}
+                    Phone: {customerMobile}
                   </Typography>
-                  {invoiceData.billTo?.gstin && (
+                  {invoiceData.delivery_details?.deliveryDetails && (
                     <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                      GSTIN: {invoiceData.billTo?.gstin}
+                      {deliveryAddress}
                     </Typography>
                   )}
                 </Stack>
@@ -371,14 +505,14 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
               <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
                 <Stack spacing={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Invoice Details
+                    Order Details
                   </Typography>
                   <Grid container spacing={1}>
                     <Grid item xs={6}>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <CalendarToday sx={{ fontSize: 16, color: "text.secondary" }} />
                         <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                          {formatDate(invoiceData.invoiceDate)}
+                          {formatDate(invoiceData.delivery_date || invoiceData.created_at)}
                         </Typography>
                       </Stack>
                     </Grid>
@@ -386,7 +520,7 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                       <Stack direction="row" spacing={1} alignItems="center">
                         <AttachMoney sx={{ fontSize: 16, color: "text.secondary" }} />
                         <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                          {invoiceData.paymentType || "Cash"}
+                          {invoiceData.mode || "Cash"}
                         </Typography>
                       </Stack>
                     </Grid>
@@ -394,7 +528,7 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Description sx={{ fontSize: 16, color: "text.secondary" }} />
                         <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                          Receipt: {invoiceData.receiptNo || "N/A"}
+                          Booked from: {invoiceData.booked_from || "N/A"}
                         </Typography>
                       </Stack>
                     </Grid>
@@ -402,7 +536,7 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                       <Stack direction="row" spacing={1} alignItems="center">
                         <LocationOn sx={{ fontSize: 16, color: "text.secondary" }} />
                         <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
-                          {invoiceData.placeOfSupply || "Delhi"}
+                          {invoiceData.station_name || restdata.station_name || "N/A"}
                         </Typography>
                       </Stack>
                     </Grid>
@@ -421,7 +555,7 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
             {isMobile ? (
               // Mobile view - simplified list
               <Stack spacing={1}>
-                {(invoiceData.items || []).slice(0, 3).map((item, idx) => (
+                {items.slice(0, 3).map((item, idx) => (
                   <Paper key={idx} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                       <Typography variant="body2" fontWeight={500}>
@@ -442,9 +576,9 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                   </Paper>
                 ))}
                 
-                {(invoiceData.items || []).length > 3 && (
+                {items.length > 3 && (
                   <Typography variant="body2" color="text.secondary" align="center">
-                    +{invoiceData.items.length - 3} more items...
+                    +{items.length - 3} more items...
                   </Typography>
                 )}
               </Stack>
@@ -462,21 +596,21 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(invoiceData.items || []).slice(0, 5).map((item, idx) => (
+                    {items.slice(0, 5).map((item, idx) => (
                       <TableRow key={idx}>
                         <TableCell>{item.particulars}</TableCell>
                         <TableCell align="right">{item.qty}</TableCell>
                         <TableCell align="right">{formatCurrency(item.rate)}</TableCell>
-                        <TableCell align="right">{item.sgst + item.cgst}%</TableCell>
+                        <TableCell align="right">{item.gst}%</TableCell>
                         <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
                       </TableRow>
                     ))}
                     
-                    {(invoiceData.items || []).length > 5 && (
+                    {items.length > 5 && (
                       <TableRow>
                         <TableCell colSpan={5} align="center">
                           <Typography variant="body2" color="text.secondary">
-                            +{invoiceData.items.length - 5} more items...
+                            +{items.length - 5} more items...
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -505,18 +639,18 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
               </Grid>
               <Grid item xs={5} sm={3}>
                 <Typography variant="body2" align="right">
-                  {formatCurrency(invoiceData.total?.subTotal)}
+                  {formatCurrency(total.subTotal)}
                 </Typography>
               </Grid>
               
               <Grid item xs={7} sm={9}>
                 <Typography variant="body2" color="text.secondary">
-                  SGST + CGST:
+                  GST (5%):
                 </Typography>
               </Grid>
               <Grid item xs={5} sm={3}>
                 <Typography variant="body2" align="right">
-                  {formatCurrency((invoiceData.total?.sgst || 0) + (invoiceData.total?.cgst || 0))}
+                  {formatCurrency(total.gst)}
                 </Typography>
               </Grid>
               
@@ -527,11 +661,31 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
               </Grid>
               <Grid item xs={5} sm={3}>
                 <Typography variant="subtitle2" fontWeight={600} align="right">
-                  {formatCurrency(invoiceData.total?.totalAmount)}
+                  {formatCurrency(total.subTotal)}
                 </Typography>
               </Grid>
             </Grid>
           </Paper>
+          
+          {/* Comments Section */}
+          {invoiceData.comment && (
+            <Paper 
+              sx={{ 
+                mt: 2, 
+                p: 2, 
+                borderRadius: 2,
+                border: "1px solid #e0e0e0",
+                bgcolor: "#fff8e1" 
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Customer Notes:
+              </Typography>
+              <Typography variant="body2">
+                {invoiceData.comment}
+              </Typography>
+            </Paper>
+          )}
         </CardContent>
       </Collapse>
       
@@ -595,20 +749,22 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                 {/* Left Side: Logo & Company Info */}
                 <Box sx={{ display: "flex", alignItems: "center", minWidth: 240, mb: 2 }}>
                   <img
-                    src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcWNtdgxebNm3zmoxrpPnWAdyZWp6XkD_VCQ&s"
+                    src={restdata.logo_image || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcWNtdgxebNm3zmoxrpPnWAdyZWp6XkD_VCQ&s"}
                     alt="Company Logo"
                     style={{ width: 80, height: "auto", marginRight: 16 }}
                   />
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                      OLF Foods Pvt Ltd
+                      {restdata.outlet_name || "OLF Foods Pvt Ltd"}
                     </Typography>
                     <Typography variant="body2">
-                      B-148, 11th Floor, Statesman House,
-                      Barakhamba Road, New Delhi - 110001
+                      {restdata.address}, {restdata.city}, {restdata.state}
                     </Typography>
                     <Typography variant="body2" sx={{ mt: 1 }}>
-                      GSTN No.: {invoiceData.gstNumber || "XXXXXXXXXXXX"}
+                      GSTN No.: {restdata.gst || "XXXXXXXXXXXX"}
+                    </Typography>
+                    <Typography variant="body2">
+                      FSSAI: {restdata.fssai || "XXXXXXXXXXXX"}
                     </Typography>
                   </Box>
                 </Box>
@@ -619,16 +775,16 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                     TAX INVOICE
                   </Typography>
                   <Typography variant="body2">
-                    Invoice No: {invoiceData.invoiceNo || "INV-XXXXX"}
+                    Order No: {invoiceData.oid || "ORD-XXXXX"}
                   </Typography>
                   <Typography variant="body2">
-                    Date: {formatDate(invoiceData.invoiceDate)}
+                    Date: {formatDate(invoiceData.created_at)}
                   </Typography>
                   <Typography variant="body2">
-                    Payment Type: {invoiceData.paymentType || "Cash"}
+                    Payment Type: {invoiceData.mode || "Cash"}
                   </Typography>
                   <Typography variant="body2">
-                    Receipt No: {invoiceData.receiptNo || "RCT-XXXXX"}
+                    Status: {orderStatus.text}
                   </Typography>
                 </Box>
               </Box>
@@ -644,37 +800,54 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
               >
                 <Box sx={{ minWidth: 240, mr: 2, mb: 2 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
-                    Bill To:
+                    Customer Details:
                   </Typography>
-                  <Typography variant="body2">{invoiceData.billTo?.name || restdata?.name || "Customer Name"}</Typography>
-                  <Typography variant="body2">
-                    {invoiceData.billTo?.address || "Address not available"}
-                  </Typography>
-                  <Typography variant="body2">
-                    GSTIN: {invoiceData.billTo?.gstin || "Not Available"}
-                  </Typography>
+                  <Typography variant="body2">Name: {customerName}</Typography>
+                  <Typography variant="body2">Phone: {customerMobile}</Typography>
+                  {invoiceData.customer_info?.customerDetails?.alternateMobile && (
+                    <Typography variant="body2">
+                      Alternate Phone: {invoiceData.customer_info.customerDetails.alternateMobile}
+                    </Typography>
+                  )}
+                  {invoiceData.delivery_details?.deliveryDetails && (
+                    <>
+                      <Typography variant="body2" sx={{ mt: 1, fontWeight: "bold" }}>
+                        Delivery Details:
+                      </Typography>
+                      <Typography variant="body2">
+                        PNR: {invoiceData.delivery_details.deliveryDetails.pnr || "N/A"}
+                      </Typography>
+                      <Typography variant="body2">
+                        Train: {invoiceData.delivery_details.deliveryDetails.trainNo || "N/A"}, 
+                        Coach: {invoiceData.delivery_details.deliveryDetails.coach || "N/A"}, 
+                        Berth: {invoiceData.delivery_details.deliveryDetails.berth || "N/A"}
+                      </Typography>
+                      <Typography variant="body2">
+                        Passenger Count: {invoiceData.delivery_details.deliveryDetails.passengerCount || "1"}
+                      </Typography>
+                    </>
+                  )}
                 </Box>
 
                 <Box sx={{ minWidth: 240, mb: 2 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
-                    Place of Supply:
+                    Restaurant Details:
+                  </Typography>
+                  <Typography variant="body2">{restdata.outlet_name || "Restaurant Name"}</Typography>
+                  <Typography variant="body2">
+                    {restdata.address || "Address not available"}
                   </Typography>
                   <Typography variant="body2">
-                    {invoiceData.placeOfSupply || "Delhi"}
-                  </Typography>
-
-                  <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 2, mb: 1 }}>
-                    Name of Supplier:
-                  </Typography>
-                  <Typography variant="body2">{invoiceData.vendor?.name || "OLF Foods Pvt Ltd"}</Typography>
-                  <Typography variant="body2">
-                    {invoiceData.vendor?.address || "B-148, 11th Floor, Statesman House, Barakhamba Road, New Delhi - 110001"}
+                    {restdata.city}, {restdata.state}
                   </Typography>
                   <Typography variant="body2">
-                    Code: {invoiceData.vendor?.code || "SUP-001"}
+                    GST: {restdata.gst || "Not Available"}
                   </Typography>
                   <Typography variant="body2">
-                    SAC Code: {invoiceData.vendor?.sacCode || "9963"}
+                    FSSAI: {restdata.fssai || "Not Available"} (Valid till: {restdata.fssai_valid || "N/A"})
+                  </Typography>
+                  <Typography variant="body2">
+                    Phone: {restdata.phone || "N/A"}
                   </Typography>
                 </Box>
               </Box>
@@ -685,41 +858,37 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                       <TableCell sx={{ width: "5%" }}>S.No</TableCell>
-                      <TableCell sx={{ width: "8%" }}>Code</TableCell>
-                      <TableCell sx={{ width: "25%" }}>Particulars</TableCell>
-                      <TableCell sx={{ width: "5%" }}>Qty</TableCell>
-                      <TableCell sx={{ width: "10%" }}>Rate</TableCell>
-                      <TableCell sx={{ width: "12%" }}>Taxable</TableCell>
-                      <TableCell sx={{ width: "8%" }}>SGST</TableCell>
-                      <TableCell sx={{ width: "8%" }}>CGST</TableCell>
-                      <TableCell sx={{ width: "12%" }}>Amount</TableCell>
+                      <TableCell sx={{ width: "30%" }}>Item</TableCell>
+                      <TableCell sx={{ width: "8%" }}>Qty</TableCell>
+                      <TableCell sx={{ width: "12%" }}>Rate</TableCell>
+                      <TableCell sx={{ width: "15%" }}>Taxable</TableCell>
+                      <TableCell sx={{ width: "10%" }}>GST</TableCell>
+                      <TableCell sx={{ width: "15%" }}>Amount</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(invoiceData.items || []).map((item, index) => (
+                    {items.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell>{item.sNo || index + 1}</TableCell>
-                        <TableCell>{item.code || "ITM" + (index + 1)}</TableCell>
+                        <TableCell>{item.sNo}</TableCell>
                         <TableCell sx={{ 
                           whiteSpace: "nowrap", 
                           overflow: "hidden", 
                           textOverflow: "ellipsis" 
                         }}>
-                          {item.particulars || "Item " + (index + 1)}
+                          {item.particulars}
                         </TableCell>
-                        <TableCell>{item.qty || 1}</TableCell>
-                        <TableCell>{formatCurrency(item.rate || 0)}</TableCell>
-                        <TableCell>{formatCurrency(item.taxable || 0)}</TableCell>
-                        <TableCell>{item.sgst?.toFixed(2) || "0.00"}%</TableCell>
-                        <TableCell>{item.cgst?.toFixed(2) || "0.00"}%</TableCell>
-                        <TableCell>{formatCurrency(item.amount || 0)}</TableCell>
+                        <TableCell>{item.qty}</TableCell>
+                        <TableCell>{formatCurrency(item.rate)}</TableCell>
+                        <TableCell>{formatCurrency(item.taxable)}</TableCell>
+                        <TableCell>5%</TableCell>
+                        <TableCell>{formatCurrency(item.amount)}</TableCell>
                       </TableRow>
                     ))}
                     
                     {/* If no items, show a placeholder row */}
-                    {(!invoiceData.items || invoiceData.items.length === 0) && (
+                    {(!items || items.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={9} align="center">No items available</TableCell>
+                        <TableCell colSpan={7} align="center">No items available</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -729,31 +898,43 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
               {/* Totals */}
               <Box sx={{ mt: 3, textAlign: "right" }}>
                 <Typography variant="body2">
-                  Sub Total: {formatCurrency(invoiceData.total?.subTotal)}
+                  Sub Total: {formatCurrency(total.subTotal-total.subTotal*0.05)}
                 </Typography>
                 <Typography variant="body2">
-                  SGST: {formatCurrency(invoiceData.total?.sgst)}
-                </Typography>
-                <Typography variant="body2">
-                  CGST: {formatCurrency(invoiceData.total?.cgst)}
+                  GST (5%): {formatCurrency(total.subTotal*0.05)}
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: "bold", mt: 1 }}>
-                  Total: {formatCurrency(invoiceData.total?.totalAmount)}
+                  Total: {formatCurrency(total.subTotal)}
                 </Typography>
                 <Typography variant="body2">
-                  In Words: {invoiceData.total?.totalInWords || "Amount in words not available"}
+                  In Words: {total.totalInWords || "Amount in words not available"}
                 </Typography>
               </Box>
+
+              {/* Notes/Comments */}
+              {invoiceData.comment && (
+                <Box sx={{ mt: 2, p: 2, border: "1px solid #f0f0f0", borderRadius: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                    Customer Notes:
+                  </Typography>
+                  <Typography variant="body2">
+                    {invoiceData.comment}
+                  </Typography>
+                </Box>
+              )}
 
               <Divider sx={{ my: 3 }} />
 
               {/* Footer / Thank You Note */}
               <Box sx={{ mt: 3 }}>
                 <Typography variant="body2" sx={{ fontWeight: "bold", textAlign: "center" }}>
-                  Thank you for using OLF Foods!
+                  Thank you for ordering from {restdata.outlet_name || "us"}!
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 1 }}>
-                  If you have any questions about this invoice, please contact support@olffoods.com
+                  If you have any questions about this invoice, please contact {restdata.email || "us"}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center" }}>
+                  This is a computer-generated invoice and does not require a physical signature.
                 </Typography>
               </Box>
             </Paper>
@@ -778,12 +959,8 @@ const InvoiceReport: React.FC<{ invoiceData: any, restdata: any }> = ({ invoiceD
   );
 };
 
-interface ReportsProps {
-  restdata: any;
-}
-
-const Reports: React.FC<ReportsProps> = ({ restdata }) => {
-  const [orders, setOrders] = useState<any[]>([]);
+const Reports = ({ restdata }) => {
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -793,8 +970,8 @@ const Reports: React.FC<ReportsProps> = ({ restdata }) => {
       try {
         setLoading(true);
         // You can still fetch station data if needed
-        await axiosInstance.get(`/stations/?station_id=${restdata?.station_id}`);
-        const res1 = await axiosInstance.get(`/orders/?res_id=${restdata?.res_id}`);
+        await axiosInstance.get(`/stations/?station_code=${restdata?.station_code}`);
+        const res1 = await axiosInstance.get(`/orders/?outlet_id=${restdata?.outlet_id}`);
         const apiOrders = res1?.data?.data?.rows || [];
         setOrders(apiOrders);
       } catch (error) {
@@ -834,17 +1011,58 @@ const Reports: React.FC<ReportsProps> = ({ restdata }) => {
           Invoice Reports
         </Typography>
         <Chip 
-          label={`${orders.length} Invoices`} 
+          label={`${orders.length} Orders`} 
           color="primary" 
           size="small"
           sx={{ fontWeight: 500 }}
         />
       </Box>
       
+      {/* Restaurant Info Card */}
+      {restdata && (
+        <Card sx={{ mb: 3, p: 2, borderRadius: 2 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            {restdata.logo_image && (
+              <Avatar 
+                src={restdata.logo_image}
+                alt={restdata.outlet_name}
+                sx={{ width: 60, height: 60, borderRadius: 2 }}
+                variant="rounded"
+              />
+            )}
+            <Stack>
+              <Typography variant="h6" fontWeight={600}>
+                {restdata.outlet_name || "Restaurant"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {restdata.address}, {restdata.city}, {restdata.state}
+              </Typography>
+              <Stack direction="row" spacing={2} mt={0.5}>
+                <Typography variant="caption" color="text.secondary">
+                  GSTIN: {restdata.gst || "N/A"}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  FSSAI: {restdata.fssai || "N/A"}
+                </Typography>
+              </Stack>
+            </Stack>
+          </Stack>
+        </Card>
+      )}
+      
       {/* Invoices List */}
       <Box sx={{ flex: 1 }}>
         {loading ? (
-          <Typography>Loading invoices...</Typography>
+          <Paper 
+            sx={{ 
+              p: 4, 
+              textAlign: "center", 
+              borderRadius: 3,
+              bgcolor: "white"
+            }}
+          >
+            <Typography>Loading orders...</Typography>
+          </Paper>
         ) : orders.length > 0 ? (
           <Stack spacing={2}>
             {orders.map((order, index) => (
@@ -861,7 +1079,7 @@ const Reports: React.FC<ReportsProps> = ({ restdata }) => {
             }}
           >
             <Typography variant="body1" paragraph>
-              No invoices found.
+              No orders found.
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Completed orders will appear here as invoices.

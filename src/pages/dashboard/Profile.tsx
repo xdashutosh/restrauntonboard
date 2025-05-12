@@ -29,7 +29,7 @@ const Profile: React.FC<Props> = ({ restdata }) => {
   useEffect(() => {
     const getdata = async () => {
       try {
-        const res = await axiosInstance.get(`/stations/?station_id=${restdata?.station_id}`);
+        const res = await axiosInstance.get(`/stations/?station_code=${restdata?.station_code}`);
         setStation(res?.data?.data?.rows[0]?.station_name);
       } catch (error) {
         console.error("Error fetching station data:", error);
@@ -357,7 +357,7 @@ const Profile: React.FC<Props> = ({ restdata }) => {
                       {restdata?.fssai || "Not Available"}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Expires: {restdata?.fssai_exp || "Not Available"}
+                      Expires: {restdata?.fssai_valid || "Not Available"}
                     </Typography>
                   </Stack>
                   <IconButton 

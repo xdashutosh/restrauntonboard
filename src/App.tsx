@@ -13,6 +13,7 @@ import React from "react";
 import { Provider } from "react-redux";
 import { persistor, store } from "./store/store";
 import { PersistGate } from 'redux-persist/integration/react';
+import Outlets from "./components/Outlets";
 
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route element={<ProtectedRoutes />}>
         <Route path="/register" element={<RegistrationForm />} />
+        <Route path="/outlets/:id" element={<Outlets />} />
         <Route 
           path="/dashboard/*" 
           element={

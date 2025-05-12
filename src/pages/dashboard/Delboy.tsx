@@ -71,11 +71,12 @@ const Delboy: React.FC<Props> = ({ restdata }) => {
   // Fetch delivery boys data
   useEffect(() => {
     const fetchData = async () => {
-      if (!restdata?.res_id) return;
+      if (!restdata?.outlet_id) return;
       
       try {
         setLoading(true);
-        const res = await axiosInstance.get(`/dels/?res_id=${restdata?.res_id}`);
+        const res = await axiosInstance.get(`/dels/?outlet_id=${restdata?.outlet_id}`);
+        console.log(res)
         setDelBoys(res?.data?.data?.rows || []);
         setError(null);
       } catch (error) {
@@ -87,7 +88,7 @@ const Delboy: React.FC<Props> = ({ restdata }) => {
     };
     
     fetchData();
-  }, [restdata]);
+  }, []);
 
   const validateForm = () => {
     const errors: {[key: string]: string} = {};
@@ -144,11 +145,11 @@ const Delboy: React.FC<Props> = ({ restdata }) => {
         docs_exp,
         aadhar,
         del_profile,
-        "res_id": restdata?.res_id
+        "outlet_id": restdata?.outlet_id
       });
       
       // Refresh data after successful submission
-      const res = await axiosInstance.get(`/dels/?res_id=${restdata?.res_id}`);
+      const res = await axiosInstance.get(`/dels/?outlet_id=${restdata?.outlet_id}`);
       setDelBoys(res?.data?.data?.rows || []);
       
       toast({
