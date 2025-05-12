@@ -118,7 +118,7 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
     station_name: "",
     station_code: "",
     vendor_id: vendorId,
-    status: 0,
+    status: 1,
     updated_by: userData?.name || null,
     updated_at: new Date().toISOString(),
     weeklyclosed: []
