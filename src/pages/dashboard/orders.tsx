@@ -417,23 +417,55 @@ const handleAssignDelivery = async (delId: number, person: any) => {
     
     return minutesDifference;
   };
-
+  
+function formatDate(dateStr) {
+  // Split the input date string by the hyphen
+  const [year, month, day] = dateStr.split('-');
+  
+  // Rearrange and join with hyphens to get DD-MM-YYYY format
+  return `${day}-${month}-${year}`;
+}
   // Format delivery date for display
   const formatDeliveryDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true
-    });
+    const datepart = dateString.split(" ")[0];
+    console.log(datepart)
+  return  `${formatDate(datepart)} At ${dateString.split(" ")[1]}`
+  
   };
+  
+  
 
-  // Calculate time left for delivery
-  const getDeliveryTimeLeft = (deliveryDate: string) => {
+ function standardizeDateTime(dateTimeStr: string): string {
+  // Parse the format "YYYY-MM-DD HH:MM IST"
+  const regex = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}) IST$/;
+  const match = dateTimeStr.match(regex);
+  
+  if (!match) {
+    throw new Error("Invalid date format. Expected: YYYY-MM-DD HH:MM IST");
+  }
+  
+  const [_, year, month, day, hour, minute] = match;
+  
+  // IST is UTC+5:30, so we add this offset to create an ISO string
+  // Format: YYYY-MM-DDTHH:MM:SS+05:30
+  return `${year}-${month}-${day}T${hour}:${minute}:00+05:30`;
+}
+
+// Modified getDeliveryTimeLeft function
+const getDeliveryTimeLeft = (deliveryDate: string) => {
+  // First standardize the date format
+  let standardDate;
+  try {
+    // Check if the date is in IST format
+    if (deliveryDate.includes('IST')) {
+      standardDate = standardizeDateTime(deliveryDate);
+    } else {
+      standardDate = deliveryDate;
+    }
+    
     const now = new Date();
-    const delivery = new Date(deliveryDate);
+    const delivery = new Date(standardDate);
+    
     const diffMs = delivery.getTime() - now.getTime();
     
     if (diffMs <= 0) return "Due now";
@@ -450,7 +482,11 @@ const handleAssignDelivery = async (delId: number, person: any) => {
       const days = Math.floor(diffMins / 1440);
       return `${days} day${days > 1 ? 's' : ''} left`;
     }
-  };
+  } catch (error) {
+    console.error("Date parsing error:", error);
+    return "Invalid date format";
+  }
+};
 
   // Get status icon based on status
   const getStatusIcon = (status: string) => {
