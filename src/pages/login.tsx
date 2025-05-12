@@ -85,11 +85,17 @@ console.log(res?.data);
 
 if(res?.data?.status)
 {
-  dispatch(setUser(res?.data?.data?.rows[0]));
+  
   toast({
     title: "Success",
     description: "OTP verified successfully"
   });
+  if(res?.data?.data?.rows[0]?.mobile){
+dispatch(setUser(res?.data?.data?.rows[0]));
+  }
+  else{
+    dispatch(setUser({"mobile":phone}))
+  }
   navigate('/register');
 }
 else{

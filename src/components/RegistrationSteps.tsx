@@ -104,8 +104,9 @@ export default function RegistrationForm() {
         const response = await axiosInstance.post('/rest-vendor', vendorForm);
         
         if (response?.data) {
+          console.log(response?.data?.data?.rows[0].id)
           // Update vendor_id
-          const vendorId = response.data.data?.vendor_id || response.data.data?.id || response.data?.vendor_id || response.data?.id;
+          const vendorId = response?.data?.data?.rows[0].id;
           setVendorId(vendorId);
           setActiveStep(1);
         }
