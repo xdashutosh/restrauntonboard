@@ -64,7 +64,8 @@ export default function AddDish({ open, onClose, outlet_id }: CreateItemProps) {
     cuisine: 'NORTH_INDIAN',
     food_type: 'THALI',
     bulk_only: 0,
-    tax: 0
+    tax: 0,
+    verified:false
   });
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);

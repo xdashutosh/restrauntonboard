@@ -33,12 +33,14 @@ import {
   SearchOff,
   CurrencyRupee,
   ClearAll,
-  Delete
+  Delete,
+  Edit // Added Edit icon
 } from "@mui/icons-material";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../interceptor/axiosInstance";
 import { RootState } from "../../store/store";
 import AddDish from "../../components/ui/AddDish";
+import EditDish from "./EditDish"; // Import the new EditDish component
 
 // Define the new item interface based on the updated API response
 interface MenuItem {
@@ -79,7 +81,11 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
   const [loading, setLoading] = useState(true);
   const [statusChanging, setStatusChanging] = useState<number | null>(null);
   
-  // New state for delete confirmation dialog
+  // New state for edit functionality
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<MenuItem | null>(null);
+  
+  // Existing state for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -116,10 +122,10 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
   };
 
   useEffect(() => {
-    if (!createModalVisible) {
+    if (!createModalVisible && !editModalVisible) {
       fetchData();
     }
-  }, [createModalVisible]);
+  }, [createModalVisible, editModalVisible]);
   
   useEffect(() => {
     fetchData();
@@ -165,19 +171,36 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
     }
   };
   
-  // New handler for opening delete confirmation dialog
+  // New handler for opening edit modal
+  const handleEditClick = (item: MenuItem) => {
+    setItemToEdit(item);
+    setEditModalVisible(true);
+  };
+  
+  // New handler for closing edit modal
+  const handleCloseEditModal = () => {
+    setEditModalVisible(false);
+    setItemToEdit(null);
+  };
+  
+  // Handler for edit success
+  const handleEditSuccess = () => {
+    fetchData(); // Refresh data after successful edit
+  };
+  
+  // Existing handler for opening delete confirmation dialog
   const handleDeleteClick = (itemId: number) => {
     setItemToDelete(itemId);
     setDeleteDialogOpen(true);
   };
   
-  // New handler for closing delete confirmation dialog
+  // Existing handler for closing delete confirmation dialog
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
     setItemToDelete(null);
   };
   
-  // New handler for confirming item deletion
+  // Existing handler for confirming item deletion
   const handleConfirmDelete = async () => {
     if (itemToDelete === null) return;
     
@@ -530,7 +553,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                   </Grid>
                   
                   {/* Details */}
-                  <Grid item xs={6} sm={7}>
+                  <Grid item xs={5} sm={6}>
                     <Stack spacing={0.5}>
                       <Typography variant="subtitle1" fontWeight={600} sx={{ lineHeight: 1.2 }}>
                         {item.item_name}
@@ -543,7 +566,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                         </Typography>
                         
                         {/* Food Type and Cuisine */}
-                        <Stack direction="row" spacing={0.5}>
+                        <Stack direction="column" spacing={0.5}>
                           <Chip
                             label={formatFoodType(item.food_type)}
                             size="small"
@@ -584,13 +607,30 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                     </Stack>
                   </Grid>
                   
-                  {/* Status Toggle and Delete Button */}
-                  <Grid item xs={3} sm={3}>
+                  {/* Action Buttons and Status Toggle */}
+                  <Grid item xs={4} sm={4}>
                     <Stack alignItems="flex-end">
                       <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
                         In Stock
                       </Typography>
                       <Stack direction="row" spacing={1} alignItems="center">
+                        {/* Edit Button */}
+                        <Stack direction={'column'}>
+                        <IconButton 
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEditClick(item)}
+                          sx={{
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                            bgcolor: 'white',
+                            '&:hover': {
+                              bgcolor: alpha('#2196f3', 0.1),
+                            }
+                          }}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        
                         {/* Delete Button */}
                         <IconButton 
                           size="small"
@@ -606,7 +646,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                         >
                           <Delete fontSize="small" />
                         </IconButton>
-                        
+                         </Stack>
                         {/* Status Toggle */}
                         {statusChanging === item.item_id ? (
                           <CircularProgress size={24} />
@@ -715,6 +755,14 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
         open={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
         outlet_id={Number(outletid?.outlet_id)}
+      />
+      
+      {/* Edit Dish Modal */}
+      <EditDish
+        open={editModalVisible}
+        onClose={handleCloseEditModal}
+        item={itemToEdit}
+        onSuccess={handleEditSuccess}
       />
       
       {/* Filter Drawer */}
