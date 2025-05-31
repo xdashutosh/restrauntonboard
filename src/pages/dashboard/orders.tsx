@@ -31,7 +31,8 @@ import { BellIcon, MenuIcon, WalletIcon } from 'lucide-react';
 import axiosInstance from '../../interceptor/axiosInstance';
 import Notification from './Notification';
 import Wallet from './Wallet';
-
+import logo from '../../components/assets/logo.png';
+import { stat } from 'fs';
 // Define interfaces for our data structure
 interface MenuItem {
   name: string;
@@ -320,24 +321,30 @@ const handleStatusChange = async (status: string) => {
   
   try {
     // If changing to out for delivery, open delivery assignment dialog
-    if (status === 'ORDER_OUT_FOR_DELIVERY') {
+    if (status === 'ORDER_OUT_FOR_DELIVERY' || status === 'ORDER_PARTIALLY_DELIVERED' || status ==="ORDER_DELIVERED") {
       setOpenStatusDialog(false);
       setOpenDeliveryDialog(true);
       return;
     }
     
     // First push the status to IRCTC
-    await pushStatusToIRCTC(
+  const res =  await pushStatusToIRCTC(
       currentOrder.oid, 
       status, 
       currentOrder.menu_items.items,
       currentOrder.del_id ? deliveryPersonsMap[currentOrder.del_id] : null
     );
-    
+    if(res.status){
+  
     // Then update order status in our database
     await axiosInstance.put(`/order/${currentOrder.oid}`, { status });
     setOpenStatusDialog(false);
     fetchOrders();
+    }
+    else{
+      alert("order push failed on irctc!");
+    }
+  
   } catch (error) {
     console.error("Error updating order status:", error);
   }
@@ -351,14 +358,14 @@ const handleAssignDelivery = async (delId: number, person: any) => {
     setdeldetails(person);
     
     // First push the status to IRCTC
-    await pushStatusToIRCTC(
+ const res =   await pushStatusToIRCTC(
       currentOrder.oid,
       'ORDER_OUT_FOR_DELIVERY',
       currentOrder.menu_items.items,
       person // Pass the full delivery person object
     );
-    
-    // Then update our database
+    if(res.status){
+ // Then update our database
     await axiosInstance.put(`/order/${currentOrder.oid}`, { 
       del_id: delId, 
       status: 'ORDER_OUT_FOR_DELIVERY' 
@@ -366,6 +373,11 @@ const handleAssignDelivery = async (delId: number, person: any) => {
     
     setOpenDeliveryDialog(false);
     fetchOrders();
+    }
+    else{
+      alert("order push failed on irctc!");
+    }
+   
   } catch (error) {
     console.error("Error assigning delivery person:", error);
   }
@@ -533,6 +545,8 @@ const getDeliveryTimeLeft = (deliveryDate: string) => {
         }}
         variant="outlined"
       >
+        <img src={logo} style={{margin:'10px'}} height={150} width={150}/>
+
         <Stack direction="row" width="100%" justifyContent="end" px={2}>
        
           <Stack direction="row" mx={2} gap={2}>

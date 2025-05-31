@@ -115,7 +115,7 @@ const Offers: React.FC = () => {
     try {
       const response = await axiosInstance.get(`/restraunts/?outlet_id=${outletid?.outlet_id}`);
       setRestaurantData(response?.data?.data?.rows[0]);
-      setPromotions(response?.data?.data?.rows[0]?.promotions.promotions || []);
+      setPromotions(response?.data?.data?.rows[0]?.promotions?.promotions || []);
     } catch (error) {
       console.error('Error fetching restaurant data:', error);
       setSnackbar({
@@ -311,10 +311,13 @@ const Offers: React.FC = () => {
   };
   
   // Delete promotion
-  const deletePromotion = (index: number) => {
+  const deletePromotion = async(index: number) => {
+
+    await axiosInstance.put(`/restraunt/${outletid.outlet_id}`,{promotions:null});
     const updatedPromotions = [...promotions];
     updatedPromotions.splice(index, 1);
     setPromotions(updatedPromotions);
+    
     
     setSnackbar({
       open: true,

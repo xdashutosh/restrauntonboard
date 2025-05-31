@@ -41,6 +41,8 @@ import axiosInstance from "../../interceptor/axiosInstance";
 import { RootState } from "../../store/store";
 import AddDish from "../../components/ui/AddDish";
 import EditDish from "./EditDish"; // Import the new EditDish component
+import XlFormat from "../../components/Xlformat";
+import ImportBulk from "../../components/ImportBulk";
 
 // Define the new item interface based on the updated API response
 interface MenuItem {
@@ -69,7 +71,7 @@ interface MenuProps {
 }
 
 const Menu: React.FC<MenuProps> = ({ restdata }) => {
-  const [items, setItems] = useState<MenuItem[]>([]);
+  const [items, setItems] = useState<any>([]);
   const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
   const [cuisineTypes, setCuisineTypes] = useState<string[]>([]);
   const [foodTypes, setFoodTypes] = useState<string[]>([]);
@@ -188,6 +190,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
     fetchData(); // Refresh data after successful edit
   };
   
+  const [isImportDialogOpen,setisImportDialogOpen]=useState(false);
   // Existing handler for opening delete confirmation dialog
   const handleDeleteClick = (itemId: number) => {
     setItemToDelete(itemId);
@@ -378,6 +381,20 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
           >
             Add Item
           </Button>
+          <XlFormat 
+                data={items} 
+                isLoading={loading} 
+              />
+              <Button variant="contained" onClick={()=>setisImportDialogOpen(true)}>
+                Import Menu
+              </Button>
+               {isImportDialogOpen && (
+        <ImportBulk
+          open={isImportDialogOpen}
+          onOpenChange={setisImportDialogOpen}
+          outletId={outletid?.outlet_id}
+        />
+      )}
         </Stack>
         
         <Box>

@@ -33,10 +33,76 @@ interface CreateItemProps {
   outlet_id: number;
 }
 
-// Define the food type and cuisine options
-const FOOD_TYPES = ["THALI", "CURRY", "RICE", "BREAD", "DESSERT", "BEVERAGE", "SNACK", "MAIN_COURSE", "STARTER"];
-const CUISINES = ["NORTH_INDIAN", "SOUTH_INDIAN", "CHINESE", "CONTINENTAL", "ITALIAN", "FAST_FOOD", "DESSERTS"];
 
+const FOOD_TYPES = [
+  "SNACKS",
+  "BREAKFAST",
+  "STARTERS",
+  "MAINS",
+  "MAINS_GRAVY",
+  "BREADS",
+  "THALI",
+  "COMBO",
+  "DESSERTS",
+  "SOUP",
+  "BEVERAGE",
+  "NAVRATRI_SPECIAL",
+  "DIET",
+  "BAKERY_CONFECTIONERY",
+  "HEALTHY_DIET",
+  "SWEETS",
+  "DIWALI_SPECIAL",
+  "BIRYANI",
+  "BULK",
+  "SPECIALITY_ITEM",
+  "CHAATS",
+  "NAMKEENS",
+  "SALADS",
+  "MOUTH_FRESHENER_DIGESTIVE",
+  "PIZZA",
+  "BURGER",
+  "HOLI_SPECIAL",
+  "PASTAS",
+  "TACOS",
+  "QUESADILLAS",
+  "SIDES",
+  "JAIN_FOOD"
+];
+
+const CUISINES = [
+  "SOUTH_INDIAN",
+  "PUNJABI",
+  "NORTH_INDIAN",
+  "MUGHALAI",
+  "BENGALI",
+  "GOAN",
+  "TAMIL",
+  "ANDHRA",
+  "KERALA",
+  "INDIAN_CHINESE",
+  "CHINESE",
+  "AWADHI",
+  "MALAYSIAN",
+  "MAHARASHTRIAN",
+  "TIBETAN",
+  "SRI_LANKAN",
+  "SIKKIMESE",
+  "TASTE_OF_BIHAR",
+  "ASSAMESE",
+  "BAKERY_CONFECTIONERY",
+  "CONTINENTAL",
+  "ITALIAN",
+  "MEXICAN",
+  "LEBANESE",
+  "MONGOLIAN",
+  "MALABARI",
+  "HYDERABADI",
+  "ODIYA",
+  "MARATHI",
+  "GUJRATI",
+  "RAJASTHANI",
+  "AMERICAN"
+];
 // Styled components for file upload
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
