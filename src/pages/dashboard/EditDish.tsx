@@ -625,6 +625,7 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
             sx={{
               bgcolor: "#EB8041",
               "&:hover": {
+               boxShadow: 4,
                 bgcolor: "#D26E2F"
               },
               borderRadius: 2,
@@ -632,10 +633,7 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
               py: 1,
               minWidth: 140,
               boxShadow: 3,
-              "&:hover": {
-                boxShadow: 4,
-                bgcolor: "#D26E2F"
-              }
+              
             }}
           >
             {loading ? (
