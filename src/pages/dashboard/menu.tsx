@@ -41,7 +41,7 @@ import axiosInstance from "../../interceptor/axiosInstance";
 import { RootState } from "../../store/store";
 import AddDish from "../../components/ui/AddDish";
 import EditDish from "./EditDish"; // Import the new EditDish component
-import XlFormat from "../../components/Xlformat";
+import XlFormat from "../../components/XlFormat";
 import ImportBulk from "../../components/ImportBulk";
 
 // Define the new item interface based on the updated API response
