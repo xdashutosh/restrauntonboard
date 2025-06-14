@@ -39,7 +39,7 @@ export default function RegistrationForm() {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const dispatch = useDispatch();
-
+const [vendordata,setvendordata]=useState(null);
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
   };
@@ -60,7 +60,9 @@ export default function RegistrationForm() {
         if (response?.data?.data?.rows?.length > 0) {
           setVendorExists(true);
           const vendorData = response.data.data.rows[0];
+          setvendordata(vendorData)
           const vendorId = vendorData.vendor_id;
+
           
           // Check if outlets already exist for this vendor
           const outletsResponse = await axiosInstance.get(`/restraunts`, {
@@ -206,6 +208,7 @@ export default function RegistrationForm() {
             onSubmit={handleOutletSubmit}
             onBack={handleBack}
             showBackButton={!vendorExists}
+            vendordata={vendordata}
           />
         )}
       </Box>

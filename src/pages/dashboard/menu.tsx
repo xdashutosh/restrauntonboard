@@ -102,17 +102,18 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
       const res = await axiosInstance.get(`/dishes/?outlet_id=${outletid?.outlet_id}`);
       
       // Sort by status, in-stock items first
-      const sortedItems = res?.data?.data?.rows.sort((a, b) => {
-        if (a.status === b.status) return 0;
-        return a.status ? -1 : 1;
-      });
-      
-      setItems(sortedItems);
-      setFilteredItems(sortedItems);
+     const filteredAndSortedItems = res?.data?.data?.rows
+  .filter(item => item.change_type !== 3)
+  .sort((a, b) => {
+    if (a.status === b.status) return 0;
+    return a.status ? -1 : 1;
+  });
+      setItems(filteredAndSortedItems);
+      setFilteredItems(filteredAndSortedItems);
       
       // Extract unique cuisine and food types for filters
-      const uniqueCuisines = [...new Set(sortedItems.map(item => item.cuisine))];
-      const uniqueFoodTypes = [...new Set(sortedItems.map(item => item.food_type))];
+      const uniqueCuisines = [...new Set(filteredAndSortedItems.map(item => item.cuisine))];
+      const uniqueFoodTypes = [...new Set(filteredAndSortedItems.map(item => item.food_type))];
       
       setCuisineTypes(uniqueCuisines);
       setFoodTypes(uniqueFoodTypes);
@@ -162,7 +163,8 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
     try {
       setStatusChanging(itemId);
       await axiosInstance.put(`/dish/${itemId}`, { 
-        status: Number(status), 
+        status: Number(status),
+        change_type:1, 
         updated_at: new Date().toISOString() 
       });
       await fetchData();
@@ -209,7 +211,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
     
     try {
       setDeleteLoading(true);
-      await axiosInstance.delete(`/dish/${itemToDelete}`);
+      await axiosInstance.put(`/dish/${itemToDelete}`,{change_type:3});
       // Close the dialog
       setDeleteDialogOpen(false);
       setItemToDelete(null);

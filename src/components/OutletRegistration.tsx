@@ -36,6 +36,7 @@ interface OutletRegistrationProps {
   onSubmit: () => void;
   onBack?: () => void;
   showBackButton?: boolean;
+  vendordata:any
 }
 
 interface Station {
@@ -76,7 +77,7 @@ const weekDays = [
   { id: "SAT", label: "Saturday" },
 ];
 
-export default function OutletRegistration({ vendorId, onSubmit, onBack, showBackButton = true }: OutletRegistrationProps) {
+export default function OutletRegistration({ vendorId, onSubmit, onBack, showBackButton = true,vendordata }: OutletRegistrationProps) {
   const [currentTab, setCurrentTab] = useState(0);
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +90,7 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
   
   // Get user data for updated_by field
   const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-  
+  console.log(vendordata)
   const [formData, setFormData] = useState<Record<string, any>>({
     outlet_name: "",
     order_timing: "30",
@@ -101,25 +102,24 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
     address: "",
     city: "",
     state: "",
-    company_name: "",
+    company_name: "olf stores", // Hard-coded, not shown in UI
     vendor_pan_number: "",
     gst: "",
     fssai: "",
     fssai_valid: "",
     logo_image: "",
-    email: "",
-    phone: "",
-    rlname: "",
-    rlemail: "",
-    rlphone: "",
-    admin_phone: "",
+    email: vendordata.vendor_email,
+    phone: vendordata.vendor_phone,
+    rlname: "olf stores", // Hard-coded, not shown in UI
+    rlemail: "contact@olfstores.com", // Hard-coded, not shown in UI
+    rlphone: "9522996999", // Hard-coded, not shown in UI
     alternative_phones: [],
     tags: "",
     station_name: "",
     station_code: "",
     vendor_id: vendorId,
     status: 1,
-    updated_by: userData?.name || null,
+    updated_by: userData?.name || vendordata?.vendor_name ,
     updated_at: new Date().toISOString(),
     weeklyclosed: []
   });
@@ -133,6 +133,7 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
     VEG: false,
     'NON VEG': false
   });
+  
 
   // Search stations as user types
   useEffect(() => {
@@ -203,10 +204,6 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
           newErrors.outlet_name = "Outlet name must be at least 2 characters.";
           isValid = false;
         }
-        if (!formData.company_name || formData.company_name.length < 2) {
-          newErrors.company_name = "Company name must be at least 2 characters.";
-          isValid = false;
-        }
         if (!formData.address || formData.address.length < 5) {
           newErrors.address = "Address must be at least 5 characters.";
           isValid = false;
@@ -219,18 +216,7 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
           newErrors.state = "State must be at least 2 characters.";
           isValid = false;
         }
-        if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-          newErrors.email = "Please enter a valid email address.";
-          isValid = false;
-        }
-        if (!formData.phone || formData.phone.length < 10) {
-          newErrors.phone = "Phone number must be at least 10 digits.";
-          isValid = false;
-        }
-        if (!formData.admin_phone || formData.admin_phone.length < 10) {
-          newErrors.admin_phone = "Admin phone number must be at least 10 digits.";
-          isValid = false;
-        }
+             
         if (!formData.station_code) {
           newErrors.station_code = "Please select a station.";
           isValid = false;
@@ -421,27 +407,15 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
             <Stack spacing={3} >
               <Typography variant="h6">Basic Information</Typography>
               
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  fullWidth
-                  label="Outlet Name*"
-                  name="outlet_name"
-                  value={formData.outlet_name}
-                  onChange={handleChange}
-                  error={!!errors.outlet_name}
-                  helperText={errors.outlet_name}
-                />
-                
-                <TextField
-                  fullWidth
-                  label="Company Name*"
-                  name="company_name"
-                  value={formData.company_name}
-                  onChange={handleChange}
-                  error={!!errors.company_name}
-                  helperText={errors.company_name}
-                />
-              </Stack>
+              <TextField
+                fullWidth
+                label="Outlet Name*"
+                name="outlet_name"
+                value={formData.outlet_name}
+                onChange={handleChange}
+                error={!!errors.outlet_name}
+                helperText={errors.outlet_name}
+              />
 
               {/* Updated Station Search Section */}
               <Box className="station-search-container" sx={{ position: 'relative' }}>
@@ -542,65 +516,7 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
                 />
               </Stack>
 
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  fullWidth
-                  label="Email*"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                />
-                
-                <TextField
-                  fullWidth
-                  label="Phone*"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  error={!!errors.phone}
-                  helperText={errors.phone}
-                />
-              </Stack>
-
-              <TextField
-                fullWidth
-                label="Admin Phone*"
-                name="admin_phone"
-                value={formData.admin_phone}
-                onChange={handleChange}
-                error={!!errors.admin_phone}
-                helperText={errors.admin_phone}
-              />
-
-              <Typography variant="subtitle1">Relationship Manager</Typography>
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  name="rlname"
-                  value={formData.rlname}
-                  onChange={handleChange}
-                />
-                
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="rlemail"
-                  value={formData.rlemail}
-                  onChange={handleChange}
-                />
-                
-                <TextField
-                  fullWidth
-                  label="Phone"
-                  name="rlphone"
-                  value={formData.rlphone}
-                  onChange={handleChange}
-                />
-              </Stack>
+            
 
               <Box>
                 <Typography variant="subtitle1" gutterBottom>Alternative Phones</Typography>

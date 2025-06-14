@@ -80,6 +80,7 @@ const Closer: React.FC = () => {
         closing_period: null,
         closure_reason: null,
         updated_by: "vendor",
+        status:3,
         updated_at: format(new Date(), 'yyyy-MM-dd HH:mm')
       });
 
@@ -145,7 +146,8 @@ const Closer: React.FC = () => {
           closedTo
         }
       ]),
-      closure_reason: closureReason
+      closure_reason: closureReason,
+      status:3
     };
 
     setLoading(true);

@@ -183,7 +183,9 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
         bulk_only: formData.bulk_only,
         image: formData.image.trim(),
         status: formData.status,
-        verified: false
+        verified: true,
+        change_type:1
+        
       };
 
       await axiosInstance.put(`/dish/${item.item_id}`, payload);

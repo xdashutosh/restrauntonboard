@@ -288,12 +288,12 @@ const Offers: React.FC = () => {
     setIsSubmitting(true);
     try {
       // Only send the promotions array as payload
-      await axiosInstance.put(`/restraunt/${outletid.outlet_id}`, {"promotions":{promotions} });
+      await axiosInstance.put(`/restraunt/${outletid.outlet_id}`, {"promotions":{promotions},status:3});
       
       setSnackbar({
         open: true,
         message: 'Promotions saved successfully!',
-        severity: 'success'
+        severity: 'success',
       });
       
       // Refresh data
@@ -313,7 +313,7 @@ const Offers: React.FC = () => {
   // Delete promotion
   const deletePromotion = async(index: number) => {
 
-    await axiosInstance.put(`/restraunt/${outletid.outlet_id}`,{promotions:null});
+    await axiosInstance.put(`/restraunt/${outletid.outlet_id}`,{promotions:null,status:3});
     const updatedPromotions = [...promotions];
     updatedPromotions.splice(index, 1);
     setPromotions(updatedPromotions);
