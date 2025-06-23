@@ -108,8 +108,8 @@ export default function OutletRegistration({ vendorId, onSubmit, onBack, showBac
     fssai: "",
     fssai_valid: "",
     logo_image: "",
-    email: vendordata.vendor_email,
-    phone: vendordata.vendor_phone,
+    email: vendordata?.vendor_email,
+    phone: vendordata?.vendor_phone,
     rlname: "olf stores", // Hard-coded, not shown in UI
     rlemail: "contact@olfstores.com", // Hard-coded, not shown in UI
     rlphone: "9522996999", // Hard-coded, not shown in UI

@@ -29,14 +29,38 @@ import {
   Grid,
   Card,
   CardContent,
-  Chip
+  Chip,
+  Container,
+  Stack,
+  InputAdornment,
+  Collapse,
+  useTheme,
+  useMediaQuery,
+  ToggleButton,
+  ToggleButtonGroup,
+  Avatar
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   Refresh as RefreshIcon,
-  Save as SaveIcon
+  Save as SaveIcon,
+  Search,
+  FilterList,
+  ViewList as ViewListIcon,
+  ViewModule as ViewModuleIcon,
+  LocalOffer,
+  TrendingDown,
+  Money,
+  Campaign,
+  CurrencyRupee,
+  Percent,
+  Payment,
+  ShoppingCart,
+  ExpandMore,
+  ExpandLess,
+  ContentCopy
 } from '@mui/icons-material';
 import axiosInstance from '../../interceptor/axiosInstance';
 import { useSelector } from 'react-redux';
@@ -64,8 +88,11 @@ interface RestaurantData {
   id: number;
   name: string;
   promotions: Promotion[];
-  [key: string]: any; // For other restaurant fields
+  [key: string]: any;
 }
+
+type ViewMode = 'grid' | 'list';
+type FilterType = 'all' | 'percentage' | 'fixed' | 'amount' | 'payment';
 
 const REQUIREMENT_TYPES = ['AMOUNT', 'PAYMENT_TYPE'];
 const PAYMENT_TYPES = ['PRE_PAID', 'POST_PAID'];
@@ -74,17 +101,18 @@ const DISCOUNT_TYPES = ['PERCENTAGE', 'FIXED'];
 const Offers: React.FC = () => {
   // Tab state
   const [tabValue, setTabValue] = useState(0);
-
-  // Get outlet ID from localStorage
   
   // Restaurant data state
   const [restaurantData, setRestaurantData] = useState<RestaurantData | null>(null);
-  
-  // Promotions state (separate from restaurantData for editing purposes)
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [formExpanded, setFormExpanded] = useState(true);
+  
   const outletid = useSelector((state: RootState) => state.outlet_id);
-
   
   // New promotion form state
   const [newPromotion, setNewPromotion] = useState<Promotion>({
@@ -106,6 +134,9 @@ const Offers: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   // Fetch restaurant data
   const fetchRestaurantData = async() => {
@@ -129,12 +160,44 @@ const Offers: React.FC = () => {
   };
   
   useEffect(() => {
-      fetchRestaurantData();
+    fetchRestaurantData();
   }, []);
-  console.log(promotions,restaurantData)
+
+  // Filter promotions based on search and filter type
+  const filteredPromotions = promotions.filter(promotion => {
+    const matchesSearch = searchQuery === "" || 
+      promotion.requirement.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      promotion.discount.type.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = filterType === 'all' || 
+      (filterType === 'percentage' && promotion.discount.type === 'PERCENTAGE') ||
+      (filterType === 'fixed' && promotion.discount.type === 'FIXED') ||
+      (filterType === 'amount' && promotion.requirement.type === 'AMOUNT') ||
+      (filterType === 'payment' && promotion.requirement.type === 'PAYMENT_TYPE');
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  // Calculate analytics
+  const totalPromotions = promotions.length;
+  const percentageDiscounts = promotions.filter(p => p.discount.type === 'PERCENTAGE').length;
+  const fixedDiscounts = promotions.filter(p => p.discount.type === 'FIXED').length;
+  const avgDiscountValue = promotions.length > 0 
+    ? promotions.reduce((acc, p) => acc + p.discount.value, 0) / promotions.length 
+    : 0;
+  
   // Handle tab change
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleViewModeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newViewMode: ViewMode | null,
+  ) => {
+    if (newViewMode !== null) {
+      setViewMode(newViewMode);
+    }
   };
   
   // Handle form input changes for new promotion
@@ -287,7 +350,6 @@ const Offers: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      // Only send the promotions array as payload
       await axiosInstance.put(`/restraunt/${outletid.outlet_id}`, {"promotions":{promotions},status:3});
       
       setSnackbar({
@@ -296,7 +358,6 @@ const Offers: React.FC = () => {
         severity: 'success',
       });
       
-      // Refresh data
       fetchRestaurantData();
     } catch (error) {
       console.error('Error saving promotions:', error);
@@ -312,12 +373,10 @@ const Offers: React.FC = () => {
   
   // Delete promotion
   const deletePromotion = async(index: number) => {
-
     await axiosInstance.put(`/restraunt/${outletid.outlet_id}`,{promotions:null,status:3});
     const updatedPromotions = [...promotions];
     updatedPromotions.splice(index, 1);
     setPromotions(updatedPromotions);
-    
     
     setSnackbar({
       open: true,
@@ -378,7 +437,6 @@ const Offers: React.FC = () => {
     const updatedPromotions = [...promotions];
     updatedPromotions[editingIndex] = editingPromotion;
     setPromotions(updatedPromotions);
-    console.log(updatedPromotions)
     
     setSnackbar({
       open: true,
@@ -442,15 +500,190 @@ const Offers: React.FC = () => {
     
     return { requirementText, discountText };
   };
+
+  const PromotionCard = ({ promotion, index }: { promotion: Promotion, index: number }) => {
+    const { requirementText, discountText } = formatPromotionText(promotion);
+    
+    return (
+      <Card 
+        sx={{ 
+          height: '100%', 
+          transition: 'all 0.3s ease',
+          border: '1px solid #e0e0e0',
+          '&:hover': { 
+            transform: 'translateY(-4px)',
+            boxShadow: theme.shadows[8],
+            borderColor: '#E87C4E'
+          } 
+        }}
+      >
+        <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+            <Stack direction="row" spacing={1}>
+              <Chip 
+                label={promotion.requirement.type} 
+                size="small" 
+                icon={promotion.requirement.type === 'AMOUNT' ? <ShoppingCart /> : <Payment />}
+                sx={{ 
+                  bgcolor: '#e3f2fd', 
+                  color: '#0d47a1',
+                  fontWeight: 600 
+                }} 
+              />
+              <Chip 
+                label={promotion.discount.type} 
+                size="small" 
+                icon={promotion.discount.type === 'PERCENTAGE' ? <Percent /> : <CurrencyRupee />}
+                sx={{ 
+                  bgcolor: '#e8f5e9', 
+                  color: '#2e7d32',
+                  fontWeight: 600 
+                }} 
+              />
+            </Stack>
+            <Box>
+              <IconButton 
+                size="small" 
+                onClick={() => openEditDialog(index)}
+                sx={{ mr: 0.5 }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton 
+                size="small" 
+                onClick={() => deletePromotion(index)}
+                color="error"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+          
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              fontWeight: 700, 
+              color: '#E87C4E', 
+              mb: 2,
+              textAlign: 'center'
+            }}
+          >
+            {discountText}
+          </Typography>
+          
+          <Box sx={{ mt: 'auto', pt: 2, borderTop: '1px solid #f0f0f0' }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>Requirement:</strong> {requirementText}
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const PromotionListItem = ({ promotion, index }: { promotion: Promotion, index: number }) => {
+    const { requirementText, discountText } = formatPromotionText(promotion);
+    
+    return (
+      <Paper
+        sx={{
+          p: 3,
+          transition: 'all 0.2s ease',
+          border: '1px solid #e0e0e0',
+          '&:hover': {
+            boxShadow: 3,
+            borderColor: '#E87C4E'
+          }
+        }}
+      >
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} sm={1}>
+            <Avatar sx={{ bgcolor: '#E87C4E' }}>
+              <LocalOffer />
+            </Avatar>
+          </Grid>
+          
+          <Grid item xs={12} sm={4}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#E87C4E', mb: 1 }}>
+              {discountText}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Chip 
+                label={promotion.requirement.type} 
+                size="small" 
+                color="primary"
+                variant="outlined"
+              />
+              <Chip 
+                label={promotion.discount.type} 
+                size="small" 
+                color="secondary"
+                variant="outlined"
+              />
+            </Stack>
+          </Grid>
+          
+          <Grid item xs={12} sm={5}>
+            <Typography variant="body2" color="text.secondary">
+              {requirementText}
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={2}>
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <IconButton 
+                size="small" 
+                onClick={() => openEditDialog(index)}
+                color="primary"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton 
+                size="small" 
+                onClick={() => deletePromotion(index)}
+                color="error"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          </Grid>
+        </Grid>
+      </Paper>
+    );
+  };
   
   return (
-    <Box sx={{ width: '100%', p: 3 }}>
-      <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-        Promotions Management
-      </Typography>
-      
-     
-      
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header Section */}
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
+            Promotions & Offers
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Create and manage discount offers for your customers
+          </Typography>
+        </Box>
+        
+        {!isMobile && tabValue === 1 && (
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={handleViewModeChange}
+            size="small"
+          >
+            <ToggleButton value="grid">
+              <ViewModuleIcon sx={{ mr: 1 }} />
+              Cards
+            </ToggleButton>
+            <ToggleButton value="list">
+              <ViewListIcon sx={{ mr: 1 }} />
+              List
+            </ToggleButton>
+          </ToggleButtonGroup>
+        )}
+      </Stack>
+
       {/* Loading State */}
       {isLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -460,395 +693,459 @@ const Offers: React.FC = () => {
       
       {!isLoading && restaurantData && (
         <>
-          {/* Restaurant Info */}
-        
+          {/* Analytics Overview */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={3}>
+              <Paper sx={{ p: 2, textAlign: 'center' }}>
+                <LocalOffer sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+                <Typography variant="h4" color="primary.main" sx={{ fontWeight: 600 }}>
+                  {totalPromotions}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Total Offers
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <Paper sx={{ p: 2, textAlign: 'center' }}>
+                <Percent sx={{ fontSize: 40, color: '#2e7d32', mb: 1 }} />
+                <Typography variant="h4" color="#2e7d32" sx={{ fontWeight: 600 }}>
+                  {percentageDiscounts}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Percentage Offers
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <Paper sx={{ p: 2, textAlign: 'center' }}>
+                <CurrencyRupee sx={{ fontSize: 40, color: '#ff9800', mb: 1 }} />
+                <Typography variant="h4" color="#ff9800" sx={{ fontWeight: 600 }}>
+                  {fixedDiscounts}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Fixed Amount Offers
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <Paper sx={{ p: 2, textAlign: 'center' }}>
+                <TrendingDown sx={{ fontSize: 40, color: 'info.main', mb: 1 }} />
+                <Typography variant="h4" color="info.main" sx={{ fontWeight: 600 }}>
+                  {avgDiscountValue.toFixed(1)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Avg Discount Value
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
           
           {/* Tabs */}
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
             <Tabs value={tabValue} onChange={handleTabChange}>
-              <Tab label="Add Promotion" />
-              <Tab label="View Promotions" />
+              <Tab label="Create Promotion" icon={<AddIcon />} />
+              <Tab label="Manage Promotions" icon={<Campaign />} />
             </Tabs>
           </Box>
           
           {/* Add Promotion Tab */}
           {tabValue === 0 && (
-            <Box
-              sx={{
-                maxWidth: 600,
-                mx: 'auto',
-                p: 3,
-                border: '1px solid #e0e0e0',
-                borderRadius: 2,
-                backgroundColor: '#fff',
-                boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, textAlign: 'center' }}>
-                Create New Promotion
-              </Typography>
-              
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                  Requirement
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Button
+                onClick={() => setFormExpanded(!formExpanded)}
+                endIcon={formExpanded ? <ExpandLess /> : <ExpandMore />}
+                sx={{ mb: 2 }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Create New Promotion
                 </Typography>
-                
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Requirement Type</InputLabel>
-                  <Select
-                    value={newPromotion.requirement.type}
-                    onChange={(e) => handleRequirementTypeChange(e.target.value)}
-                    label="Requirement Type"
-                  >
-                    {REQUIREMENT_TYPES.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type === 'AMOUNT' ? 'Minimum Order Amount' : 'Payment Type'}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                
-                {newPromotion.requirement.type === 'PAYMENT_TYPE' && (
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Payment Type</InputLabel>
-                    <Select
-                      value={newPromotion.requirement.paymentType || ''}
-                      onChange={(e) => handlePaymentTypeChange(e.target.value)}
-                      label="Payment Type"
-                    >
-                      {PAYMENT_TYPES.map((type) => (
-                        <MenuItem key={type} value={type}>
-                          {type === 'PRE_PAID' ? 'PRE_PAID' : 'CASH_ON_DELIVERY'}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-                
-                <TextField
-                  label="Minimum Order Amount"
-                  type="number"
-                  value={newPromotion.requirement.minimumOrderAmount}
-                  onChange={(e) => handleMinimumOrderAmountChange(Number(e.target.value))}
-                  fullWidth
-                  InputProps={{
-                    startAdornment: <Typography sx={{ mr: 1 }}>₹</Typography>,
-                  }}
-                />
-              </Box>
-              
-              <Divider sx={{ my: 3 }} />
-              
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                  Discount
-                </Typography>
-                
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Discount Type</InputLabel>
-                  <Select
-                    value={newPromotion.discount.type}
-                    onChange={(e) => handleDiscountTypeChange(e.target.value)}
-                    label="Discount Type"
-                  >
-                    {DISCOUNT_TYPES.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type === 'PERCENTAGE' ? 'Percentage Discount' : 'Fixed Amount Discount'}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                
-                <TextField
-                  label="Discount Value"
-                  type="number"
-                  value={newPromotion.discount.value}
-                  onChange={(e) => handleDiscountValueChange(Number(e.target.value))}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                  InputProps={{
-                    endAdornment: (
-                      <Typography sx={{ ml: 1 }}>
-                        {newPromotion.discount.type === 'PERCENTAGE' ? '%' : '₹'}
+              </Button>
+
+              <Collapse in={formExpanded}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <Paper sx={{ p: 3, height: '100%' }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#E87C4E' }}>
+                        Requirement Settings
                       </Typography>
-                    ),
-                  }}
-                />
+                      
+                      <FormControl fullWidth sx={{ mb: 3 }}>
+                        <InputLabel>Requirement Type</InputLabel>
+                        <Select
+                          value={newPromotion.requirement.type}
+                          onChange={(e) => handleRequirementTypeChange(e.target.value)}
+                          label="Requirement Type"
+                        >
+                          {REQUIREMENT_TYPES.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type === 'AMOUNT' ? 'Minimum Order Amount' : 'Payment Type'}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      
+                      {newPromotion.requirement.type === 'PAYMENT_TYPE' && (
+                        <FormControl fullWidth sx={{ mb: 3 }}>
+                          <InputLabel>Payment Type</InputLabel>
+                          <Select
+                            value={newPromotion.requirement.paymentType || ''}
+                            onChange={(e) => handlePaymentTypeChange(e.target.value)}
+                            label="Payment Type"
+                          >
+                            {PAYMENT_TYPES.map((type) => (
+                              <MenuItem key={type} value={type}>
+                                {type === 'PRE_PAID' ? 'PRE_PAID' : 'CASH_ON_DELIVERY'}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      )}
+                      
+                      <TextField
+                        label="Minimum Order Amount"
+                        type="number"
+                        value={newPromotion.requirement.minimumOrderAmount}
+                        onChange={(e) => handleMinimumOrderAmountChange(Number(e.target.value))}
+                        fullWidth
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                        }}
+                      />
+                    </Paper>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Paper sx={{ p: 3, height: '100%' }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#E87C4E' }}>
+                        Discount Settings
+                      </Typography>
+                      
+                      <FormControl fullWidth sx={{ mb: 3 }}>
+                        <InputLabel>Discount Type</InputLabel>
+                        <Select
+                          value={newPromotion.discount.type}
+                          onChange={(e) => handleDiscountTypeChange(e.target.value)}
+                          label="Discount Type"
+                        >
+                          {DISCOUNT_TYPES.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type === 'PERCENTAGE' ? 'Percentage Discount' : 'Fixed Amount Discount'}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      
+                      <TextField
+                        label="Discount Value"
+                        type="number"
+                        value={newPromotion.discount.value}
+                        onChange={(e) => handleDiscountValueChange(Number(e.target.value))}
+                        fullWidth
+                        sx={{ mb: 3 }}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              {newPromotion.discount.type === 'PERCENTAGE' ? '%' : '₹'}
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      
+                      {newPromotion.discount.type === 'PERCENTAGE' && (
+                        <TextField
+                          label="Maximum Discount Amount (-1 for no cap)"
+                          type="number"
+                          value={newPromotion.discount.maxDiscount}
+                          onChange={(e) => handleMaxDiscountChange(Number(e.target.value))}
+                          fullWidth
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                          }}
+                          helperText="Enter -1 for no maximum cap"
+                        />
+                      )}
+                    </Paper>
+                  </Grid>
+                </Grid>
                 
-                {newPromotion.discount.type === 'PERCENTAGE' && (
-                  <TextField
-                    label="Maximum Discount Amount (-1 for no cap)"
-                    type="number"
-                    value={newPromotion.discount.maxDiscount}
-                    onChange={(e) => handleMaxDiscountChange(Number(e.target.value))}
-                    fullWidth
-                    InputProps={{
-                      startAdornment: <Typography sx={{ mr: 1 }}>₹</Typography>,
+                <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={resetForm}
+                    sx={{ minWidth: 120 }}
+                  >
+                    Reset
+                  </Button>
+                  
+                  <Button
+                    variant="contained"
+                    onClick={addPromotion}
+                    sx={{
+                      minWidth: 120,
+                      backgroundColor: '#E87C4E',
+                      '&:hover': {
+                        backgroundColor: '#D26E2F',
+                      },
                     }}
-                    helperText="Enter -1 for no maximum cap"
-                  />
-                )}
-              </Box>
-              
-              <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                <Button
-                  variant="outlined"
-                  onClick={resetForm}
-                  sx={{ flex: 1, textTransform: 'none', fontWeight: 600 }}
-                >
-                  Reset
-                </Button>
-                
-                <Button
-                  variant="contained"
-                  onClick={addPromotion}
-                  sx={{
-                    flex: 1,
-                    backgroundColor: '#2196f3',
-                    color: '#fff',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    '&:hover': {
-                      backgroundColor: '#1976d2',
-                    },
-                  }}
-                  startIcon={<AddIcon />}
-                >
-                  Add Promotion
-                </Button>
-              </Box>
-            </Box>
+                    startIcon={<AddIcon />}
+                  >
+                    Add Promotion
+                  </Button>
+                </Box>
+              </Collapse>
+            </Paper>
           )}
           
           {/* View Promotions Tab */}
           {tabValue === 1 && (
             <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3, gap: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={savePromotions}
-                  disabled={isSubmitting}
-                  startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </Box>
+              {/* Search and Filter Section */}
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+                  <TextField
+                    fullWidth
+                    placeholder="Search promotions..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Search />
+                        </InputAdornment>
+                      )
+                    }}
+                    sx={{ flex: 1 }}
+                  />
+                  
+                  <FormControl sx={{ minWidth: 150 }}>
+                    <InputLabel>Filter Type</InputLabel>
+                    <Select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value as FilterType)}
+                      label="Filter Type"
+                      size="small"
+                    >
+                      <MenuItem value="all">All Types</MenuItem>
+                      <MenuItem value="percentage">Percentage</MenuItem>
+                      <MenuItem value="fixed">Fixed Amount</MenuItem>
+                      <MenuItem value="amount">Order Amount</MenuItem>
+                      <MenuItem value="payment">Payment Type</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={savePromotions}
+                    disabled={isSubmitting}
+                    startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                    sx={{ minWidth: 140 }}
+                  >
+                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </Stack>
+
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Showing {filteredPromotions.length} of {promotions.length} promotions
+                </Typography>
+              </Paper>
               
-              {promotions?.length === 0 ? (
-                <Box sx={{ textAlign: 'center', p: 4, bgcolor: '#f5f5f5', borderRadius: 2 }}>
-                  <Typography variant="body1" color="textSecondary">
-                    No promotions available. Create your first promotion from the "Add Promotion" tab.
+              {filteredPromotions?.length === 0 ? (
+                <Paper sx={{ textAlign: 'center', p: 8 }}>
+                  <LocalOffer sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="h5" color="text.secondary" gutterBottom>
+                    {promotions.length === 0 ? 'No promotions available' : 'No promotions match your filters'}
                   </Typography>
-                </Box>
+                  <Typography variant="body1" color="text.secondary" mb={3}>
+                    {promotions.length === 0 
+                      ? 'Create your first promotion to start offering discounts to customers'
+                      : 'Try adjusting your search or filter criteria'}
+                  </Typography>
+                  
+                  {promotions.length === 0 ? (
+                    <Button 
+                      variant="contained" 
+                      onClick={() => setTabValue(0)}
+                      startIcon={<AddIcon />}
+                      sx={{
+                        bgcolor: '#E87C4E',
+                        '&:hover': { bgcolor: '#D26E2F' }
+                      }}
+                    >
+                      Create First Promotion
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outlined" 
+                      onClick={() => {
+                        setSearchQuery("");
+                        setFilterType("all");
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </Paper>
               ) : (
-                <Grid container spacing={2}>
-                  {promotions?.map((promotion, index) => {
-                    const { requirementText, discountText } = formatPromotionText(promotion);
-                    
-                    return (
-                      <Grid item xs={12} md={6} key={index}>
-                        <Card 
-                          sx={{ 
-                            height: '100%', 
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            transition: 'all 0.2s',
-                            '&:hover': { 
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
-                            } 
-                          }}
-                        >
-                          <CardContent sx={{ flexGrow: 1 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                              <Chip 
-                                label={promotion.requirement.type} 
-                                size="small" 
-                                sx={{ 
-                                  bgcolor: '#e3f2fd', 
-                                  color: '#0d47a1',
-                                  fontWeight: 'bold' 
-                                }} 
-                              />
-                              <Box>
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => openEditDialog(index)}
-                                  sx={{ mr: 1 }}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => deletePromotion(index)}
-                                  color="error"
-                                >
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Box>
-                            </Box>
-                            
-                            <Typography 
-                              variant="h6" 
-                              sx={{ 
-                                fontWeight: 'bold', 
-                                color: '#d32f2f', 
-                                mb: 2 
-                              }}
-                            >
-                              {discountText}
-                            </Typography>
-                            
-                            <Typography variant="body2" color="text.secondary">
-                              {requirementText}
-                            </Typography>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
+                <>
+                  {viewMode === 'grid' ? (
+                    <Grid container spacing={3}>
+                      {filteredPromotions?.map((promotion, index) => (
+                        <Grid item xs={12} sm={6} md={4} key={index}>
+                          <PromotionCard promotion={promotion} index={index} />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <Stack spacing={2}>
+                      {filteredPromotions?.map((promotion, index) => (
+                        <PromotionListItem key={index} promotion={promotion} index={index} />
+                      ))}
+                    </Stack>
+                  )}
+                </>
               )}
             </Box>
           )}
           
           {/* Edit Dialog */}
-          <Dialog open={editDialogOpen} onClose={closeEditDialog} maxWidth="sm" fullWidth>
+          <Dialog open={editDialogOpen} onClose={closeEditDialog} maxWidth="md" fullWidth>
             <DialogTitle>Edit Promotion</DialogTitle>
             <DialogContent>
               {editingPromotion && (
                 <Box sx={{ mt: 2 }}>
-                  <Box sx={{ mb: 4 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                      Requirement
-                    </Typography>
-                    
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>Requirement Type</InputLabel>
-                      <Select
-                        value={editingPromotion.requirement.type}
-                        onChange={(e) => handleEditRequirementTypeChange(e.target.value)}
-                        label="Requirement Type"
-                      >
-                        {REQUIREMENT_TYPES.map((type) => (
-                          <MenuItem key={type} value={type}>
-                            {type === 'AMOUNT' ? 'Minimum Order Amount' : 'Payment Type'}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    
-                    {editingPromotion.requirement.type === 'PAYMENT_TYPE' && (
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                        Requirement
+                      </Typography>
+                      
                       <FormControl fullWidth sx={{ mb: 2 }}>
-                        <InputLabel>Payment Type</InputLabel>
+                        <InputLabel>Requirement Type</InputLabel>
                         <Select
-                          value={editingPromotion.requirement.paymentType || ''}
-                          onChange={(e) => setEditingPromotion({
-                            ...editingPromotion,
-                            requirement: {
-                              ...editingPromotion.requirement,
-                              paymentType: e.target.value
-                            }
-                          })}
-                          label="Payment Type"
+                          value={editingPromotion.requirement.type}
+                          onChange={(e) => handleEditRequirementTypeChange(e.target.value)}
+                          label="Requirement Type"
                         >
-                          {PAYMENT_TYPES.map((type) => (
+                          {REQUIREMENT_TYPES.map((type) => (
                             <MenuItem key={type} value={type}>
-                              {type === 'PRE_PAID' ? 'PRE_PAID' : 'CASH_ON_DELIVERY'}
+                              {type === 'AMOUNT' ? 'Minimum Order Amount' : 'Payment Type'}
                             </MenuItem>
                           ))}
                         </Select>
                       </FormControl>
-                    )}
-                    
-                    <TextField
-                      label="Minimum Order Amount"
-                      type="number"
-                      value={editingPromotion.requirement.minimumOrderAmount}
-                      onChange={(e) => setEditingPromotion({
-                        ...editingPromotion,
-                        requirement: {
-                          ...editingPromotion.requirement,
-                          minimumOrderAmount: Number(e.target.value)
-                        }
-                      })}
-                      fullWidth
-                      InputProps={{
-                        startAdornment: <Typography sx={{ mr: 1 }}>₹</Typography>,
-                      }}
-                    />
-                  </Box>
-                  
-                  <Divider sx={{ my: 3 }} />
-                  
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                      Discount
-                    </Typography>
-                    
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>Discount Type</InputLabel>
-                      <Select
-                        value={editingPromotion.discount.type}
-                        onChange={(e) => setEditingPromotion({
-                          ...editingPromotion,
-                          discount: {
-                            ...editingPromotion.discount,
-                            type: e.target.value
-                          }
-                        })}
-                        label="Discount Type"
-                      >
-                        {DISCOUNT_TYPES.map((type) => (
-                          <MenuItem key={type} value={type}>
-                            {type === 'PERCENTAGE' ? 'Percentage Discount' : 'Fixed Amount Discount'}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    
-                    <TextField
-                      label="Discount Value"
-                      type="number"
-                      value={editingPromotion.discount.value}
-                      onChange={(e) => setEditingPromotion({
-                        ...editingPromotion,
-                        discount: {
-                          ...editingPromotion.discount,
-                          value: Number(e.target.value)
-                        }
-                      })}
-                      fullWidth
-                      sx={{ mb: 2 }}
-                      InputProps={{
-                        endAdornment: (
-                          <Typography sx={{ ml: 1 }}>
-                            {editingPromotion.discount.type === 'PERCENTAGE' ? '%' : '₹'}
-                          </Typography>
-                        ),
-                      }}
-                    />
-                    
-                    {editingPromotion.discount.type === 'PERCENTAGE' && (
+                      
+                      {editingPromotion.requirement.type === 'PAYMENT_TYPE' && (
+                        <FormControl fullWidth sx={{ mb: 2 }}>
+                          <InputLabel>Payment Type</InputLabel>
+                          <Select
+                            value={editingPromotion.requirement.paymentType || ''}
+                            onChange={(e) => setEditingPromotion({
+                              ...editingPromotion,
+                              requirement: {
+                                ...editingPromotion.requirement,
+                                paymentType: e.target.value
+                              }
+                            })}
+                            label="Payment Type"
+                          >
+                            {PAYMENT_TYPES.map((type) => (
+                              <MenuItem key={type} value={type}>
+                                {type === 'PRE_PAID' ? 'PRE_PAID' : 'CASH_ON_DELIVERY'}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      )}
+                      
                       <TextField
-                        label="Maximum Discount Amount (-1 for no cap)"
+                        label="Minimum Order Amount"
                         type="number"
-                        value={editingPromotion.discount.maxDiscount}
+                        value={editingPromotion.requirement.minimumOrderAmount}
                         onChange={(e) => setEditingPromotion({
                           ...editingPromotion,
-                          discount: {
-                            ...editingPromotion.discount,
-                            maxDiscount: Number(e.target.value)
+                          requirement: {
+                            ...editingPromotion.requirement,
+                            minimumOrderAmount: Number(e.target.value)
                           }
                         })}
                         fullWidth
                         InputProps={{
-                          startAdornment: <Typography sx={{ mr: 1 }}>₹</Typography>,
+                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                         }}
-                        helperText="Enter -1 for no maximum cap"
                       />
-                    )}
-                  </Box>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                        Discount
+                      </Typography>
+                      
+                      <FormControl fullWidth sx={{ mb: 2 }}>
+                        <InputLabel>Discount Type</InputLabel>
+                        <Select
+                          value={editingPromotion.discount.type}
+                          onChange={(e) => setEditingPromotion({
+                            ...editingPromotion,
+                            discount: {
+                              ...editingPromotion.discount,
+                              type: e.target.value
+                            }
+                          })}
+                          label="Discount Type"
+                        >
+                          {DISCOUNT_TYPES.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type === 'PERCENTAGE' ? 'Percentage Discount' : 'Fixed Amount Discount'}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      
+                      <TextField
+                        label="Discount Value"
+                        type="number"
+                        value={editingPromotion.discount.value}
+                        onChange={(e) => setEditingPromotion({
+                          ...editingPromotion,
+                          discount: {
+                            ...editingPromotion.discount,
+                            value: Number(e.target.value)
+                          }
+                        })}
+                        fullWidth
+                        sx={{ mb: 2 }}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              {editingPromotion.discount.type === 'PERCENTAGE' ? '%' : '₹'}
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      
+                      {editingPromotion.discount.type === 'PERCENTAGE' && (
+                        <TextField
+                          label="Maximum Discount Amount (-1 for no cap)"
+                          type="number"
+                          value={editingPromotion.discount.maxDiscount}
+                          onChange={(e) => setEditingPromotion({
+                            ...editingPromotion,
+                            discount: {
+                              ...editingPromotion.discount,
+                              maxDiscount: Number(e.target.value)
+                            }
+                          })}
+                          fullWidth
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                          }}
+                          helperText="Enter -1 for no maximum cap"
+                        />
+                      )}
+                    </Grid>
+                  </Grid>
                 </Box>
               )}
             </DialogContent>
@@ -878,7 +1175,7 @@ const Offers: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </Container>
   );
 };
 

@@ -3,12 +3,19 @@ import {
   TextField,
   Stack,
   Typography,
-  Drawer,
   CircularProgress,
   Box,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  Paper,
+  Container,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  Card,
+  CardContent,
+  Grid
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import React from 'react';
@@ -37,11 +44,12 @@ export default function RegistrationForm() {
   });
 
   const navigate = useNavigate();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const dispatch = useDispatch();
-const [vendordata,setvendordata]=useState(null);
-  const toggleDrawer = (open: boolean) => {
-    setDrawerOpen(open);
+  const [vendordata, setvendordata] = useState(null);
+
+  const toggleDialog = (open: boolean) => {
+    setDialogOpen(open);
   };
 
   // Check if vendor exists on mount
@@ -126,7 +134,7 @@ const [vendordata,setvendordata]=useState(null);
 
   // Handle successful outlet submission
   const handleOutletSubmit = () => {
-    toggleDrawer(true);
+    toggleDialog(true);
   };
 
   const handlelogout = () => {
@@ -136,103 +144,244 @@ const [vendordata,setvendordata]=useState(null);
 
   if (loading) {
     return (
-      <Stack justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Stack>
+      <Box 
+        display="flex" 
+        justifyContent="center" 
+        alignItems="center" 
+        minHeight="100vh"
+        sx={{ backgroundColor: '#f5f5f5' }}
+      >
+        <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+          <Stack alignItems="center" spacing={2}>
+            <CircularProgress size={60} sx={{ color: '#FF6B3F' }} />
+            <Typography variant="h6" color="text.secondary">
+              Loading...
+            </Typography>
+          </Stack>
+        </Paper>
+      </Box>
     );
   }
 
   return (
-    <Stack p={2}>
-      <Box sx={{ width: '100%' }}>
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+    <Box sx={{ backgroundColor: '#f5f5f5', minHeight: '100vh', py: 4 }}>
+      <Container maxWidth="md">
+        <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          {/* Header */}
+          <Box sx={{ backgroundColor: '#FF6B3F', color: 'white', p: 3, textAlign: 'center' }}>
+            <Typography variant="h4" fontWeight="bold">
+              Vendor Registration
+            </Typography>
+            <Typography variant="subtitle1" sx={{ opacity: 0.9, mt: 1 }}>
+              Complete your registration to get started
+            </Typography>
+          </Box>
 
-        {activeStep === 0 && !vendorExists && (
-          <Stack spacing={2}>
-            <Typography variant="h5" sx={{ mb: 2 }}>Vendor Information</Typography>
-            
-            <TextField
-              fullWidth
-              label="Vendor Name"
-              name="vendor_name"
-              value={vendorForm.vendor_name}
-              onChange={handleVendorChange}
-            />
-            
-            <TextField
-              fullWidth
-              label="Vendor Phone"
-              name="vendor_phone"
-              value={vendorForm.vendor_phone}
-              onChange={handleVendorChange}
-              disabled // Since it comes from userData.mobile
-            />
-            
-            <TextField
-              fullWidth
-              label="Vendor Email"
-              name="vendor_email"
-              value={vendorForm.vendor_email}
-              onChange={handleVendorChange}
-            />
-            
-            <TextField
-              fullWidth
-              label="Vendor Address"
-              name="vendor_address"
-              value={vendorForm.vendor_address}
-              onChange={handleVendorChange}
-              multiline
-              rows={3}
-            />
-            
-            <Button
-              variant="contained"
-              onClick={handleNextStep}
-              sx={{ mt: 3, backgroundColor: '#FF6B3F' }}
-            >
-              Next
-            </Button>
-          </Stack>
-        )}
+          <Box sx={{ p: 4 }}>
+            {/* Stepper */}
+            <Stepper activeStep={activeStep} sx={{ mb: 6 }}>
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel 
+                    sx={{
+                      '& .MuiStepLabel-label': {
+                        fontSize: '1.1rem',
+                        fontWeight: 500
+                      }
+                    }}
+                  >
+                    {label}
+                  </StepLabel>
+                </Step>
+              ))}
+            </Stepper>
 
-        {activeStep === 1 && (
-          <OutletRegistration
-            vendorId={vendorId}
-            onSubmit={handleOutletSubmit}
-            onBack={handleBack}
-            showBackButton={!vendorExists}
-            vendordata={vendordata}
-          />
-        )}
-      </Box>
+            {/* Vendor Information Form */}
+            {activeStep === 0 && !vendorExists && (
+              <Card elevation={2} sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h5" sx={{ mb: 3, color: '#FF6B3F', fontWeight: 600 }}>
+                    Vendor Information
+                  </Typography>
+                  
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Vendor Name"
+                        name="vendor_name"
+                        value={vendorForm.vendor_name}
+                        onChange={handleVendorChange}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '&:hover fieldset': {
+                              borderColor: '#FF6B3F',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#FF6B3F',
+                            },
+                          },
+                        }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Vendor Phone"
+                        name="vendor_phone"
+                        value={vendorForm.vendor_phone}
+                        onChange={handleVendorChange}
+                        disabled
+                        variant="outlined"
+                        helperText="Phone number from your account"
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Vendor Email"
+                        name="vendor_email"
+                        type="email"
+                        value={vendorForm.vendor_email}
+                        onChange={handleVendorChange}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '&:hover fieldset': {
+                              borderColor: '#FF6B3F',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#FF6B3F',
+                            },
+                          },
+                        }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Vendor Address"
+                        name="vendor_address"
+                        value={vendorForm.vendor_address}
+                        onChange={handleVendorChange}
+                        multiline
+                        rows={4}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '&:hover fieldset': {
+                              borderColor: '#FF6B3F',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#FF6B3F',
+                            },
+                          },
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+                    <Button
+                      variant="contained"
+                      onClick={handleNextStep}
+                      size="large"
+                      sx={{ 
+                        backgroundColor: '#FF6B3F',
+                        px: 4,
+                        py: 1.5,
+                        borderRadius: 2,
+                        fontWeight: 600,
+                        '&:hover': {
+                          backgroundColor: '#e55a36',
+                        }
+                      }}
+                    >
+                      Continue to Outlet Details
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            )}
 
-      <Drawer
-        anchor="bottom"
-        open={drawerOpen}
-        sx={{
-          '& .MuiDrawer-paper': {
-            height: '45vh',
-            borderRadius: '50px 50px 0 0',
+            {/* Outlet Registration */}
+            {activeStep === 1 && (
+              <OutletRegistration
+                vendorId={vendorId}
+                onSubmit={handleOutletSubmit}
+                onBack={handleBack}
+                showBackButton={!vendorExists}
+                vendordata={vendordata}
+              />
+            )}
+          </Box>
+        </Paper>
+      </Container>
+
+      {/* Success Dialog - Replaced Drawer */}
+      <Dialog
+        open={dialogOpen}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
             bgcolor: '#FFF4F1',
-          },
+          }
         }}
       >
-        <Stack justifyContent={'center'} alignItems={'center'} height={'100%'} p={4} width={'100%'} textAlign={'center'}>
-          <img src='https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRVKyAHIjNlFhGsr9sugvi1_4G868kL9yjR1nbh6SYQcICe2ZUc' height={150} width={150}/>
-          <Typography fontFamily={"font-katibeh"} variant='h5'>Pending for Review</Typography>
-          <Typography fontFamily={"font-katibeh"} color='gray'>You'll receive a mail once your details are reviewed by us.</Typography>
-          <Button variant="contained" color="primary" fullWidth sx={{ mt: 4, p: 2, borderRadius: '12px', backgroundColor: '#FF6B3F', fontWeight: 'bolder' }} onClick={handlelogout}>
-            Okay
+        <DialogContent sx={{ textAlign: 'center', py: 6 }}>
+          <Box sx={{ mb: 3 }}>
+            <img 
+              src='https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRVKyAHIjNlFhGsr9sugvi1_4G868kL9yjR1nbh6SYQcICe2ZUc' 
+              height={120} 
+              width={120}
+              style={{ borderRadius: '50%' }}
+            />
+          </Box>
+          
+          <Typography 
+            variant="h4" 
+            fontFamily="font-katibeh" 
+            sx={{ color: '#FF6B3F', fontWeight: 'bold', mb: 2 }}
+          >
+            Pending for Review
+          </Typography>
+          
+          <Typography 
+            variant="h6" 
+            fontFamily="font-katibeh" 
+            color="text.secondary"
+            sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}
+          >
+            Thank you for registering! You'll receive an email once your details are reviewed by our team.
+          </Typography>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button 
+            variant="contained" 
+            fullWidth
+            size="large"
+            onClick={handlelogout}
+            sx={{ 
+              py: 1.5, 
+              borderRadius: 2, 
+              backgroundColor: '#FF6B3F', 
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: '#e55a36',
+              }
+            }}
+          >
+            Continue
           </Button>
-        </Stack>
-      </Drawer>
-    </Stack>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }

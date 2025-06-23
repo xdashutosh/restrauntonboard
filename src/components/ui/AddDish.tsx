@@ -116,6 +116,11 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
+// Helper function to capitalize first letter of every word
+const capitalizeWords = (str: string) => {
+  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export default function AddDish({ open, onClose, outlet_id }: CreateItemProps) {
   const [formState, setFormState] = useState({
     item_name: '',
@@ -166,9 +171,15 @@ export default function AddDish({ open, onClose, outlet_id }: CreateItemProps) {
         }));
       }
     } else {
+      // Apply auto-capitalization for item_name and description
+      let processedValue = value;
+      if (name === "item_name" || name === "description") {
+        processedValue = capitalizeWords(value);
+      }
+      
       setFormState(prevState => ({
         ...prevState,
-        [name]: value,
+        [name]: processedValue,
       }));
     }
   };

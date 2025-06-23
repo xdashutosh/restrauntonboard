@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -32,7 +32,8 @@ import {
   Restaurant,
   Schedule,
   LocalOffer,
-  Info
+  Info,
+  FileUpload
 } from "@mui/icons-material";
 import axiosInstance from "../../interceptor/axiosInstance";
 
@@ -62,6 +63,11 @@ interface MenuItem {
   station_code: string;
 }
 
+// Helper function to capitalize first letter of every word
+const capitalizeWords = (str: string) => {
+  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) => {
   const [formData, setFormData] = useState({
     item_name: "",
@@ -79,35 +85,24 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Cuisine options
-  const cuisineOptions = [
-    { value: "NORTH_INDIAN", label: "North Indian" },
-    { value: "SOUTH_INDIAN", label: "South Indian" },
-    { value: "CHINESE", label: "Chinese" },
-    { value: "CONTINENTAL", label: "Continental" },
-    { value: "ITALIAN", label: "Italian" },
-    { value: "MEXICAN", label: "Mexican" },
-    { value: "THAI", label: "Thai" },
-    { value: "JAPANESE", label: "Japanese" },
-    { value: "FAST_FOOD", label: "Fast Food" },
-    { value: "DESSERTS", label: "Desserts" },
-    { value: "BEVERAGES", label: "Beverages" }
-  ];
-
-  // Food type options
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const foodTypeOptions = [
-    { value: "STARTERS", label: "Starters" },
-    { value: "MAINS", label: "Mains" },
-    { value: "DESSERTS", label: "Desserts" },
-    { value: "BEVERAGES", label: "Beverages" },
-    { value: "SNACKS", label: "Snacks" },
-    { value: "RICE", label: "Rice" },
-    { value: "BREAD", label: "Bread" },
-    { value: "CURRY", label: "Curry" }
+    "SNACKS", "BREAKFAST", "STARTERS", "MAINS", "MAINS_GRAVY", "BREADS", "THALI",
+    "COMBO", "DESSERTS", "SOUP", "BEVERAGE", "NAVRATRI_SPECIAL", "DIET", "BAKERY_CONFECTIONERY",
+    "HEALTHY_DIET", "SWEETS", "DIWALI_SPECIAL", "BIRYANI", "BULK", "SPECIALITY_ITEM",
+    "CHAATS", "NAMKEENS", "SALADS", "MOUTH_FRESHENER_DIGESTIVE", "PIZZA", "BURGER",
+    "HOLI_SPECIAL", "PASTAS", "TACOS", "QUESADILLAS", "SIDES", "JAIN_FOOD"
   ];
 
-  // Initialize form data when item changes
+  const cuisineOptions = [
+    "SOUTH_INDIAN", "PUNJABI", "NORTH_INDIAN", "MUGHALAI", "BENGALI", "GOAN", "TAMIL",
+    "ANDHRA", "KERALA", "INDIAN_CHINESE", "CHINESE", "AWADHI", "MALAYSIAN", "MAHARASHTRIAN",
+    "TIBETAN", "SRI_LANKAN", "SIKKIMESE", "TASTE_OF_BIHAR", "ASSAMESE", "BAKERY_CONFECTIONERY",
+    "CONTINENTAL", "ITALIAN", "MEXICAN", "LEBANESE", "MONGOLIAN", "MALABARI", "HYDERABADI",
+    "ODIYA", "MARATHI", "GUJRATI", "RAJASTHANI", "AMERICAN"
+  ];
+
   useEffect(() => {
     if (item && open) {
       setFormData({
@@ -128,11 +123,36 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
   }, [item, open]);
 
   const handleInputChange = (field: string, value: any) => {
+    let processedValue = value;
+    if ((field === "item_name" || field === "description") && typeof value === "string") {
+      processedValue = capitalizeWords(value);
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }));
     setError("");
+  };
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file (e.g., JPG, PNG, WEBP).");
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // The result is a base64 data URL
+      handleInputChange("image", reader.result as string);
+    };
+    reader.onerror = () => {
+      setError("Failed to read the image file. Please try again.");
+    };
+    reader.readAsDataURL(file);
   };
 
   const validateForm = () => {
@@ -140,7 +160,6 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
       setError("Item name is required");
       return false;
     }
- 
     if (!formData.vendor_price || parseFloat(formData.vendor_price) <= 0) {
       setError("Valid vendor price is required");
       return false;
@@ -181,11 +200,10 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
         cuisine: formData.cuisine,
         food_type: formData.food_type,
         bulk_only: formData.bulk_only,
-        image: formData.image.trim(),
+        image: formData.image, // This will be either the original URL or the new base64 string
         status: formData.status,
         verified: true,
-        change_type:1
-        
+        change_type: 1
       };
 
       await axiosInstance.put(`/dish/${item.item_id}`, payload);
@@ -287,7 +305,7 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                 </Typography>
               </Stack>
               
-              <Stack direction="row" spacing={3} alignItems="center">
+              <Stack direction="row" spacing={4} alignItems="center">
                 <Avatar
                   src={formData.image}
                   sx={{
@@ -298,26 +316,34 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                     boxShadow: 3
                   }}
                 >
-                  <PhotoCamera fontSize="large" color="disabled" />
+                  <Restaurant fontSize="large" color="disabled" />
                 </Avatar>
                 
-                <Box sx={{ flex: 1 }}>
-                  <TextField
-                    fullWidth
-                    label="Image URL"
-                    value={formData.image}
-                    onChange={(e) => handleInputChange("image", e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    variant="outlined"
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        backgroundColor: "white",
-                        borderRadius: 2
-                      }
-                    }}
+                <Box>
+                   <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleImageChange}
                   />
+                  <Button
+                    variant="contained"
+                    startIcon={<FileUpload />}
+                    onClick={() => fileInputRef.current?.click()}
+                    sx={{
+                      bgcolor: "#EB8041",
+                       "&:hover": {
+                          boxShadow: 2,
+                          bgcolor: "#D26E2F"
+                      },
+                      borderRadius: 2
+                    }}
+                  >
+                    Upload Image
+                  </Button>
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                    Enter a valid image URL to display your dish photo
+                    Select an image from your device to upload.
                   </Typography>
                 </Box>
               </Stack>
@@ -409,13 +435,13 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                     value={formData.cuisine}
                     onChange={(e) => handleInputChange("cuisine", e.target.value)}
                     label="Cuisine"
-                    sx={{
-                      borderRadius: 2
-                    }}
+                    sx={{ borderRadius: 2 }}
                   >
                     {cuisineOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
+                      <MenuItem key={option} value={option}>
+                        {option.split('_').map(word => 
+                          word.charAt(0) + word.slice(1).toLowerCase()
+                        ).join(' ')}
                       </MenuItem>
                     ))}
                   </Select>
@@ -427,13 +453,13 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                     value={formData.food_type}
                     onChange={(e) => handleInputChange("food_type", e.target.value)}
                     label="Food Type"
-                    sx={{
-                      borderRadius: 2
-                    }}
+                    sx={{ borderRadius: 2 }}
                   >
                     {foodTypeOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
+                      <MenuItem key={option} value={option}>
+                        {option.split('_').map(word => 
+                          word.charAt(0) + word.slice(1).toLowerCase()
+                        ).join(' ')}
                       </MenuItem>
                     ))}
                   </Select>
@@ -460,12 +486,8 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                   onChange={(e) => handleInputChange("opening_time", e.target.value)}
                   type="time"
                   required
-                  InputLabelProps={{
-                    shrink: true
-                  }}
-                 
+                  InputLabelProps={{ shrink: true }}
                 />
-
                 <TextField
                   sx={{ flex: 1 }}
                   label="Closing Time"
@@ -473,11 +495,7 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                   onChange={(e) => handleInputChange("closing_time", e.target.value)}
                   type="time"
                   required
-                 
-                  InputLabelProps={{
-                    shrink: true
-                  }}
-                  
+                  InputLabelProps={{ shrink: true }}
                 />
               </Stack>
             </Box>
@@ -489,7 +507,6 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
               <Typography variant="h6" fontWeight={600} color="text.primary" sx={{ mb: 3 }}>
                 Item Settings
               </Typography>
-
               <Stack spacing={2}>
                 <Paper 
                   sx={{ 
@@ -503,23 +520,11 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Stack direction="row" alignItems="center" spacing={2}>
                       <Box>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          Vegetarian Item
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Mark this item as vegetarian-friendly
-                        </Typography>
+                        <Typography variant="subtitle1" fontWeight={600}>Vegetarian Item</Typography>
+                        <Typography variant="body2" color="text.secondary">Mark this item as vegetarian-friendly</Typography>
                       </Box>
                       {formData.is_vegeterian === 1 && (
-                        <Chip 
-                          label="VEG" 
-                          size="small" 
-                          sx={{ 
-                            backgroundColor: "#4caf50", 
-                            color: "white",
-                            fontWeight: 600
-                          }} 
-                        />
+                        <Chip label="VEG" size="small" sx={{ backgroundColor: "#4caf50", color: "white", fontWeight: 600 }} />
                       )}
                     </Stack>
                     <Switch
@@ -529,7 +534,6 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                     />
                   </Stack>
                 </Paper>
-
                 <Paper 
                   sx={{ 
                     p: 2, 
@@ -542,23 +546,11 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Stack direction="row" alignItems="center" spacing={2}>
                       <Box>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          Bulk Orders Only
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Available only for bulk orders
-                        </Typography>
+                        <Typography variant="subtitle1" fontWeight={600}>Bulk Orders Only</Typography>
+                        <Typography variant="body2" color="text.secondary">Available only for bulk orders</Typography>
                       </Box>
                       {formData.bulk_only === 1 && (
-                        <Chip 
-                          label="BULK" 
-                          size="small" 
-                          sx={{ 
-                            backgroundColor: "#ff9800", 
-                            color: "white",
-                            fontWeight: 600
-                          }} 
-                        />
+                        <Chip label="BULK" size="small" sx={{ backgroundColor: "#ff9800", color: "white", fontWeight: 600 }} />
                       )}
                     </Stack>
                     <Switch
@@ -568,7 +560,6 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                     />
                   </Stack>
                 </Paper>
-
                 <Paper 
                   sx={{ 
                     p: 2, 
@@ -579,17 +570,10 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
                   }}
                 >
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          Available (In Stock)
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Item is available for ordering
-                        </Typography>
-                      </Box>
-                     
-                    </Stack>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={600}>Available (In Stock)</Typography>
+                      <Typography variant="body2" color="text.secondary">Toggle item availability for ordering</Typography>
+                    </Box>
                     <Switch
                       checked={formData.status === 1}
                       onChange={(e) => handleInputChange("status", e.target.checked ? 1 : 0)}
@@ -609,14 +593,7 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
             onClick={handleClose}
             disabled={loading}
             variant="outlined"
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              py: 1,
-              borderColor: "grey.300",
-              color: "text.secondary",
-              minWidth: 100
-            }}
+            sx={{ borderRadius: 2, px: 3, py: 1, borderColor: "grey.300", color: "text.secondary", minWidth: 100 }}
           >
             Cancel
           </Button>
@@ -626,16 +603,12 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
             disabled={loading}
             sx={{
               bgcolor: "#EB8041",
-              "&:hover": {
-               boxShadow: 4,
-                bgcolor: "#D26E2F"
-              },
+              "&:hover": { boxShadow: 4, bgcolor: "#D26E2F" },
               borderRadius: 2,
               px: 4,
               py: 1,
               minWidth: 140,
               boxShadow: 3,
-              
             }}
           >
             {loading ? (

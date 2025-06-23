@@ -23,7 +23,21 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Card,
+  CardContent,
+  CardMedia,
+  CardActions,
+  Container,
+  ToggleButton,
+  ToggleButtonGroup,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  AppBar,
+  Toolbar,
+  Collapse
 } from "@mui/material";
 import { 
   Add, 
@@ -34,17 +48,26 @@ import {
   CurrencyRupee,
   ClearAll,
   Delete,
-  Edit // Added Edit icon
+  Edit,
+  ViewList as ViewListIcon,
+  ViewModule as ViewModuleIcon,
+  Sort as SortIcon,
+  TrendingUp,
+  Inventory,
+  Restaurant,
+  ExpandMore,
+  ExpandLess,
+  FileUpload,
+  FileDownload
 } from "@mui/icons-material";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../interceptor/axiosInstance";
 import { RootState } from "../../store/store";
 import AddDish from "../../components/ui/AddDish";
-import EditDish from "./EditDish"; // Import the new EditDish component
+import EditDish from "./EditDish";
 import XlFormat from "../../components/XlFormat";
 import ImportBulk from "../../components/ImportBulk";
 
-// Define the new item interface based on the updated API response
 interface MenuItem {
   item_id: number;
   item_name: string;
@@ -70,8 +93,11 @@ interface MenuProps {
   restdata: any;
 }
 
+type ViewMode = 'grid' | 'list';
+type SortOption = 'name' | 'price' | 'status' | 'cuisine';
+
 const Menu: React.FC<MenuProps> = ({ restdata }) => {
-  const [items, setItems] = useState<any>([]);
+  const [items, setItems] = useState<MenuItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
   const [cuisineTypes, setCuisineTypes] = useState<string[]>([]);
   const [foodTypes, setFoodTypes] = useState<string[]>([]);
@@ -82,18 +108,23 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusChanging, setStatusChanging] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [sortBy, setSortBy] = useState<SortOption>('name');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   
-  // New state for edit functionality
+  // Edit functionality state
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<MenuItem | null>(null);
   
-  // Existing state for delete confirmation dialog
+  // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   
+  const [isImportDialogOpen, setisImportDialogOpen] = useState(false);
+  
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const outletid = useSelector((state: RootState) => state.outlet_id);
 
   const fetchData = async () => {
@@ -101,17 +132,16 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
       setLoading(true);
       const res = await axiosInstance.get(`/dishes/?outlet_id=${outletid?.outlet_id}`);
       
-      // Sort by status, in-stock items first
-     const filteredAndSortedItems = res?.data?.data?.rows
-  .filter(item => item.change_type !== 3)
-  .sort((a, b) => {
-    if (a.status === b.status) return 0;
-    return a.status ? -1 : 1;
-  });
+      const filteredAndSortedItems = res?.data?.data?.rows
+        .filter(item => item.change_type !== 3)
+        .sort((a, b) => {
+          if (a.status === b.status) return 0;
+          return a.status ? -1 : 1;
+        });
+      
       setItems(filteredAndSortedItems);
       setFilteredItems(filteredAndSortedItems);
       
-      // Extract unique cuisine and food types for filters
       const uniqueCuisines = [...new Set(filteredAndSortedItems.map(item => item.cuisine))];
       const uniqueFoodTypes = [...new Set(filteredAndSortedItems.map(item => item.food_type))];
       
@@ -137,17 +167,15 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
   useEffect(() => {
     let filtered = items;
     
-    // Filter by food type
+    // Apply filters
     if (selectedFoodType !== "all") {
       filtered = filtered.filter(item => item.food_type === selectedFoodType);
     }
     
-    // Filter by cuisine
     if (selectedCuisine !== "all") {
       filtered = filtered.filter(item => item.cuisine === selectedCuisine);
     }
     
-    // Search filter
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(item => 
@@ -156,15 +184,31 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
       );
     }
     
+    // Apply sorting
+    filtered = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.item_name.localeCompare(b.item_name);
+        case 'price':
+          return a.vendor_price - b.vendor_price;
+        case 'status':
+          return b.status - a.status;
+        case 'cuisine':
+          return a.cuisine.localeCompare(b.cuisine);
+        default:
+          return 0;
+      }
+    });
+    
     setFilteredItems(filtered);
-  }, [selectedFoodType, selectedCuisine, items, searchQuery]);
+  }, [selectedFoodType, selectedCuisine, items, searchQuery, sortBy]);
 
   const handleStatus = async (itemId: number, status: number) => {
     try {
       setStatusChanging(itemId);
       await axiosInstance.put(`/dish/${itemId}`, { 
         status: Number(status),
-        change_type:1, 
+        change_type: 3, 
         updated_at: new Date().toISOString() 
       });
       await fetchData();
@@ -175,52 +219,52 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
     }
   };
   
-  // New handler for opening edit modal
   const handleEditClick = (item: MenuItem) => {
     setItemToEdit(item);
     setEditModalVisible(true);
   };
   
-  // New handler for closing edit modal
   const handleCloseEditModal = () => {
     setEditModalVisible(false);
     setItemToEdit(null);
   };
   
-  // Handler for edit success
   const handleEditSuccess = () => {
-    fetchData(); // Refresh data after successful edit
+    fetchData();
   };
   
-  const [isImportDialogOpen,setisImportDialogOpen]=useState(false);
-  // Existing handler for opening delete confirmation dialog
   const handleDeleteClick = (itemId: number) => {
     setItemToDelete(itemId);
     setDeleteDialogOpen(true);
   };
   
-  // Existing handler for closing delete confirmation dialog
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
     setItemToDelete(null);
   };
   
-  // Existing handler for confirming item deletion
   const handleConfirmDelete = async () => {
     if (itemToDelete === null) return;
     
     try {
       setDeleteLoading(true);
-      await axiosInstance.put(`/dish/${itemToDelete}`,{change_type:3});
-      // Close the dialog
+      await axiosInstance.put(`/dish/${itemToDelete}`, { change_type: 3 });
       setDeleteDialogOpen(false);
       setItemToDelete(null);
-      // Refresh data
       await fetchData();
     } catch (error) {
       console.error("Error deleting menu item:", error);
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleViewModeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newViewMode: ViewMode | null,
+  ) => {
+    if (newViewMode !== null) {
+      setViewMode(newViewMode);
     }
   };
   
@@ -235,11 +279,6 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
     ).join(' ');
   };
-  
-  const truncateDescription = (description: string) => {
-    if (!description) return "";
-    return description.length > 20 ? `${description.substring(0, 20)}...` : description;
-  };
 
   const activeFiltersCount = 
     (selectedFoodType !== "all" ? 1 : 0) + 
@@ -252,6 +291,301 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
     setSearchQuery("");
     setDrawerOpen(false);
   };
+
+  // Calculate stats
+  const activeItems = items.filter(item => item.status === 1).length;
+  const inactiveItems = items.filter(item => item.status === 0).length;
+  const avgPrice = items.length > 0 ? items.reduce((acc, item) => acc + item.vendor_price, 0) / items.length : 0;
+
+  const MenuItemCard = ({ item }: { item: MenuItem }) => (
+    <Card
+      sx={{
+        height: '100%',
+        transition: 'all 0.3s ease',
+        opacity: item.status ? 1 : 0.7,
+        border: '1px solid',
+        borderColor: item.status ? 'transparent' : '#e0e0e0',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: theme.shadows[8],
+          borderColor: '#E87C4E'
+        }
+      }}
+    >
+      <Box sx={{ position: 'relative' }}>
+        <CardMedia
+          component="img"
+          height="200"
+          image={item?.image || "https://via.placeholder.com/300x200?text=No+Image"}
+          alt={item.item_name}
+          sx={{ objectFit: 'cover' }}
+          onError={(e) => {
+            e.target.src = "https://via.placeholder.com/300x200?text=No+Image";
+          }}
+        />
+        
+        {/* Veg/Non-veg indicator */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            borderRadius: '4px',
+            px: 1,
+            py: 0.5,
+            bgcolor: item?.is_vegeterian === 1 ? '#0A8A0A' : '#D6292C',
+            color: 'white',
+            fontSize: '0.75rem',
+            fontWeight: 600
+          }}
+        >
+          {item?.is_vegeterian === 1 ? 'VEG' : 'NON-VEG'}
+        </Box>
+
+        {/* Status indicator */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            borderRadius: '50%',
+            width: 12,
+            height: 12,
+            bgcolor: item.status ? '#4caf50' : '#f44336'
+          }}
+        />
+      </Box>
+      
+      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, lineHeight: 1.2 }}>
+          {item.item_name}
+        </Typography>
+        
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          <Chip
+            label={formatFoodType(item.food_type)}
+            size="small"
+            sx={{ 
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              color: theme.palette.primary.main,
+              fontSize: '0.7rem'
+            }}
+          />
+          <Chip
+            label={formatCuisineName(item.cuisine)}
+            size="small"
+            sx={{ 
+              bgcolor: alpha(theme.palette.secondary.main, 0.1),
+              color: theme.palette.secondary.main,
+              fontSize: '0.7rem'
+            }}
+          />
+        </Stack>
+        
+        {item?.description && (
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ mb: 2, lineHeight: 1.4 }}
+          >
+            {item.description.length > 100 ? `${item.description.substring(0, 100)}...` : item.description}
+          </Typography>
+        )}
+        
+        <Typography 
+          variant="h6" 
+          color="#3B7F4B" 
+          sx={{ 
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          <CurrencyRupee fontSize="small" />
+          {item?.vendor_price}
+        </Typography>
+      </CardContent>
+      
+      <CardActions sx={{ p: 2, pt: 0, justifyContent: 'space-between' }}>
+        <Stack direction="row" spacing={1}>
+          <IconButton 
+            size="small"
+            color="primary"
+            onClick={() => handleEditClick(item)}
+            sx={{
+              bgcolor: alpha('#2196f3', 0.1),
+              '&:hover': { bgcolor: alpha('#2196f3', 0.2) }
+            }}
+          >
+            <Edit fontSize="small" />
+          </IconButton>
+          
+          <IconButton 
+            size="small"
+            color="error"
+            onClick={() => handleDeleteClick(item.item_id)}
+            sx={{
+              bgcolor: alpha('#f44336', 0.1),
+              '&:hover': { bgcolor: alpha('#f44336', 0.2) }
+            }}
+          >
+            <Delete fontSize="small" />
+          </IconButton>
+        </Stack>
+        
+        {statusChanging === item.item_id ? (
+          <CircularProgress size={24} />
+        ) : (
+          <Switch
+            checked={Boolean(item?.status)}
+            onChange={() => handleStatus(item.item_id, item.status === 1 ? 0 : 1)}
+            sx={{
+              '& .MuiSwitch-switchBase.Mui-checked': {
+                color: '#3B7F4B',
+              },
+              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                backgroundColor: '#3B7F4B',
+              },
+            }}
+          />
+        )}
+      </CardActions>
+    </Card>
+  );
+
+  const MenuItemListItem = ({ item }: { item: MenuItem }) => (
+    <Paper
+      sx={{
+        p: 3,
+        transition: 'all 0.2s ease',
+        opacity: item.status ? 1 : 0.7,
+        border: '1px solid #e0e0e0',
+        '&:hover': {
+          boxShadow: 3,
+          borderColor: '#E87C4E'
+        }
+      }}
+    >
+      <Grid container spacing={3} alignItems="center">
+        <Grid item xs={12} sm={2}>
+          <Box
+            sx={{
+              position: 'relative',
+              width: 80,
+              height: 80,
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}
+          >
+            <Box
+              component="img"
+              src={item?.image || "https://via.placeholder.com/80"}
+              alt={item.item_name}
+              sx={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                borderRadius: '50%',
+                width: 16,
+                height: 16,
+                bgcolor: item?.is_vegeterian === 1 ? '#0A8A0A' : '#D6292C',
+                border: '2px solid white'
+              }}
+            />
+          </Box>
+        </Grid>
+        
+        <Grid item xs={12} sm={6}>
+          <Stack spacing={1}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {item.item_name}
+            </Typography>
+            
+            <Stack direction="row" spacing={1}>
+              <Chip
+                label={formatFoodType(item.food_type)}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+              <Chip
+                label={formatCuisineName(item.cuisine)}
+                size="small"
+                color="secondary"
+                variant="outlined"
+              />
+            </Stack>
+            
+            {item?.description && (
+              <Typography variant="body2" color="text.secondary">
+                {item.description.length > 150 ? `${item.description.substring(0, 150)}...` : item.description}
+              </Typography>
+            )}
+          </Stack>
+        </Grid>
+        
+        <Grid item xs={12} sm={2}>
+          <Typography 
+            variant="h6" 
+            color="#3B7F4B" 
+            sx={{ 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <CurrencyRupee fontSize="small" />
+            {item?.vendor_price}
+          </Typography>
+        </Grid>
+        
+        <Grid item xs={12} sm={2}>
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <IconButton 
+              size="small"
+              color="primary"
+              onClick={() => handleEditClick(item)}
+            >
+              <Edit fontSize="small" />
+            </IconButton>
+            
+            <IconButton 
+              size="small"
+              color="error"
+              onClick={() => handleDeleteClick(item.item_id)}
+            >
+              <Delete fontSize="small" />
+            </IconButton>
+            
+            {statusChanging === item.item_id ? (
+              <CircularProgress size={24} />
+            ) : (
+              <Switch
+                checked={Boolean(item?.status)}
+                onChange={() => handleStatus(item.item_id, item.status === 1 ? 0 : 1)}
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: '#3B7F4B',
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: '#3B7F4B',
+                  },
+                }}
+              />
+            )}
+          </Stack>
+        </Grid>
+      </Grid>
+    </Paper>
+  );
 
   const renderFilterDrawer = () => (
     <Drawer
@@ -352,362 +686,309 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
   );
 
   return (
-    <Box sx={{ 
-      width: "100%", 
-      minHeight: "100vh", 
-      bgcolor: "#f5f5f5", 
-      px: { xs: 1.5, sm: 2 },
-      py: 2,
-      overflow: "hidden" 
-    }}>
-      {/* Header & Search */}
-      <Stack spacing={2} sx={{ mb: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6" fontWeight={700} color="text.primary">
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header Section */}
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
             Menu Management
           </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Manage your restaurant's menu items and pricing
+          </Typography>
+        </Box>
+        
+        <Stack direction="row" spacing={2}>
+          {!isMobile && (
+            <ToggleButtonGroup
+              value={viewMode}
+              exclusive
+              onChange={handleViewModeChange}
+              size="small"
+            >
+              <ToggleButton value="grid">
+                <ViewModuleIcon sx={{ mr: 1 }} />
+                Grid
+              </ToggleButton>
+              <ToggleButton value="list">
+                <ViewListIcon sx={{ mr: 1 }} />
+                List
+              </ToggleButton>
+            </ToggleButtonGroup>
+          )}
+          
+          <Button
+            variant="outlined"
+            startIcon={<FileDownload />}
+            onClick={() => {/* XlFormat functionality */}}
+          >
+            Export
+          </Button>
+          
+          <Button
+            variant="outlined"
+            startIcon={<FileUpload />}
+            onClick={() => setisImportDialogOpen(true)}
+          >
+            Import
+          </Button>
+          
           <Button
             variant="contained"
             startIcon={<Add />}
             onClick={() => setCreateModalVisible(true)}
             sx={{
-              borderRadius: 2,
               bgcolor: "#EB8041",
-              boxShadow: "none",
-              px: 2,
-              "&:hover": {
-                bgcolor: "#D26E2F",
-                boxShadow: "0 4px 12px rgba(235, 128, 65, 0.2)"
-              }
+              "&:hover": { bgcolor: "#D26E2F" }
             }}
           >
             Add Item
           </Button>
-          <XlFormat 
-                data={items} 
-                isLoading={loading} 
-              />
-              <Button variant="contained" onClick={()=>setisImportDialogOpen(true)}>
-                Import Menu
-              </Button>
-               {isImportDialogOpen && (
-        <ImportBulk
-          open={isImportDialogOpen}
-          onOpenChange={setisImportDialogOpen}
-          outletId={outletid?.outlet_id}
-        />
-      )}
-        </Stack>
-        
-        <Box>
-          <TextField
-            fullWidth
-            placeholder="Search menu items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-              endAdornment: searchQuery && (
-                <InputAdornment position="end">
-                  <IconButton edge="end" onClick={() => setSearchQuery("")} size="small">
-                    <SearchOff fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ),
-              sx: {
-                bgcolor: "white",
-                borderRadius: 2,
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "transparent"
-                },
-                "&:hover .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.1)"
-                }
-              }
-            }}
-          />
-        </Box>
-        
-        {/* Filter button & chips */}
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ overflowX: "auto", pb: 0.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<FilterList />}
-            onClick={() => setDrawerOpen(true)}
-            sx={{
-              borderRadius: 2,
-              borderColor: "rgba(0,0,0,0.1)",
-              color: "text.primary",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(0,0,0,0.2)",
-                bgcolor: "rgba(0,0,0,0.02)"
-              }
-            }}
-          >
-            Filters
-            {activeFiltersCount > 0 && (
-              <Badge
-                badgeContent={activeFiltersCount}
-                color="primary"
-                sx={{ ml: 1 }}
-              />
-            )}
-          </Button>
-          
-          {/* Active filter chips */}
-          <Box sx={{ display: "flex", gap: 1, overflowX: "auto", flexShrink: 0 }}>
-            {selectedFoodType !== "all" && (
-              <Chip 
-                size="small"
-                label={`Type: ${formatFoodType(selectedFoodType)}`}
-                onDelete={() => setSelectedFoodType("all")}
-                color="primary"
-                variant="outlined"
-              />
-            )}
-            
-            {selectedCuisine !== "all" && (
-              <Chip 
-                size="small"
-                label={`Cuisine: ${formatCuisineName(selectedCuisine)}`}
-                onDelete={() => setSelectedCuisine("all")}
-                color="primary"
-                variant="outlined"
-              />
-            )}
-            
-            {searchQuery.trim() !== "" && (
-              <Chip 
-                size="small"
-                label={`Search: ${searchQuery}`}
-                onDelete={() => setSearchQuery("")}
-                color="primary"
-                variant="outlined"
-              />
-            )}
-            
-            {activeFiltersCount > 0 && (
-              <Chip 
-                size="small"
-                label="Clear All"
-                onClick={resetFilters}
-                color="default"
-              />
-            )}
-          </Box>
         </Stack>
       </Stack>
+
+      {/* Stats Overview */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Restaurant sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+            <Typography variant="h4" color="primary.main" sx={{ fontWeight: 600 }}>
+              {items.length}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Items
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <TrendingUp sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
+            <Typography variant="h4" color="success.main" sx={{ fontWeight: 600 }}>
+              {activeItems}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Active
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Inventory sx={{ fontSize: 40, color: 'warning.main', mb: 1 }} />
+            <Typography variant="h4" color="warning.main" sx={{ fontWeight: 600 }}>
+              {inactiveItems}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Inactive
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <CurrencyRupee sx={{ fontSize: 40, color: 'info.main', mb: 1 }} />
+            <Typography variant="h4" color="info.main" sx={{ fontWeight: 600 }}>
+              ₹{avgPrice.toFixed(0)}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Avg Price
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
       
-      {/* Menu Items List */}
+      {/* Search and Filter Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+            <TextField
+              fullWidth
+              placeholder="Search menu items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+                endAdornment: searchQuery && (
+                  <InputAdornment position="end">
+                    <IconButton edge="end" onClick={() => setSearchQuery("")} size="small">
+                      <SearchOff fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              sx={{ flex: 1 }}
+            />
+            
+            {!isMobile && (
+              <>
+                <FormControl sx={{ minWidth: 150 }}>
+                  <InputLabel size="small">Food Type</InputLabel>
+                  <Select
+                    value={selectedFoodType}
+                    onChange={(e) => setSelectedFoodType(e.target.value)}
+                    label="Food Type"
+                    size="small"
+                  >
+                    <MenuItem value="all">All Types</MenuItem>
+                    {foodTypes.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {formatFoodType(type)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <FormControl sx={{ minWidth: 150 }}>
+                  <InputLabel size="small">Cuisine</InputLabel>
+                  <Select
+                    value={selectedCuisine}
+                    onChange={(e) => setSelectedCuisine(e.target.value)}
+                    label="Cuisine"
+                    size="small"
+                  >
+                    <MenuItem value="all">All Cuisines</MenuItem>
+                    {cuisineTypes.map((cuisine) => (
+                      <MenuItem key={cuisine} value={cuisine}>
+                        {formatCuisineName(cuisine)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <FormControl sx={{ minWidth: 120 }}>
+                  <InputLabel size="small">Sort by</InputLabel>
+                  <Select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    label="Sort by"
+                    size="small"
+                  >
+                    <MenuItem value="name">Name</MenuItem>
+                    <MenuItem value="price">Price</MenuItem>
+                    <MenuItem value="status">Status</MenuItem>
+                    <MenuItem value="cuisine">Cuisine</MenuItem>
+                  </Select>
+                </FormControl>
+              </>
+            )}
+            
+            {isMobile && (
+              <Button
+                variant="outlined"
+                startIcon={<FilterList />}
+                onClick={() => setDrawerOpen(true)}
+                sx={{ alignSelf: 'stretch' }}
+              >
+                Filters
+                {activeFiltersCount > 0 && (
+                  <Badge
+                    badgeContent={activeFiltersCount}
+                    color="primary"
+                    sx={{ ml: 1 }}
+                  />
+                )}
+              </Button>
+            )}
+          </Stack>
+          
+          {/* Active Filters */}
+          {activeFiltersCount > 0 && (
+            <Box>
+              <Button
+                size="small"
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+                endIcon={filtersExpanded ? <ExpandLess /> : <ExpandMore />}
+                sx={{ mb: 1 }}
+              >
+                Active Filters ({activeFiltersCount})
+              </Button>
+              
+              <Collapse in={filtersExpanded}>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {selectedFoodType !== "all" && (
+                    <Chip 
+                      size="small"
+                      label={`Type: ${formatFoodType(selectedFoodType)}`}
+                      onDelete={() => setSelectedFoodType("all")}
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                  
+                  {selectedCuisine !== "all" && (
+                    <Chip 
+                      size="small"
+                      label={`Cuisine: ${formatCuisineName(selectedCuisine)}`}
+                      onDelete={() => setSelectedCuisine("all")}
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                  
+                  {searchQuery.trim() !== "" && (
+                    <Chip 
+                      size="small"
+                      label={`Search: ${searchQuery}`}
+                      onDelete={() => setSearchQuery("")}
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                  
+                  <Chip 
+                    size="small"
+                    label="Clear All"
+                    onClick={resetFilters}
+                    color="default"
+                  />
+                </Stack>
+              </Collapse>
+            </Box>
+          )}
+          
+          <Typography variant="body2" color="text.secondary">
+            Showing {filteredItems.length} of {items.length} items
+          </Typography>
+        </Stack>
+      </Paper>
+      
+      {/* Menu Items Display */}
       <Box>
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "40vh" }}>
             <CircularProgress size={40} color="primary" />
           </Box>
         ) : filteredItems.length > 0 ? (
-          <Stack spacing={2}>
-            {filteredItems.map((item) => (
-              <Paper
-                key={item.item_id}
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  transition: "transform 0.2s ease-in-out",
-                  opacity: item.status ? 1 : 0.7,
-                  bgcolor: "white"
-                }}
-              >
-                <Grid container spacing={2} alignItems="center">
-                  {/* Image */}
-                  <Grid item xs={3} sm={2}>
-                    <Box
-                      sx={{
-                        position: "relative",
-                        width: "100%",
-                        paddingTop: "100%",
-                        borderRadius: 2,
-                        overflow: "hidden",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src={item?.image || "https://via.placeholder.com/100"}
-                        alt={item.item_name}
-                        sx={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover"
-                        }}
-                        onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/100?text=No+Image";
-                        }}
-                      />
-                      {/* Veg/Non-veg indicator */}
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          top: 4,
-                          right: 4,
-                          borderRadius: "50%",
-                          width: 20,
-                          height: 20,
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          bgcolor: item?.is_vegeterian === 1 ? "#0A8A0A" : "#D6292C",
-                          border: "2px solid white"
-                        }}
-                      />
-                    </Box>
+          <>
+            {viewMode === 'grid' ? (
+              <Grid container spacing={3}>
+                {filteredItems.map((item) => (
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={item.item_id}>
+                    <MenuItemCard item={item} />
                   </Grid>
-                  
-                  {/* Details */}
-                  <Grid item xs={5} sm={6}>
-                    <Stack spacing={0.5}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ lineHeight: 1.2 }}>
-                        {item.item_name}
-                      </Typography>
-                      
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Typography variant="subtitle1" fontWeight={700} color="#3B7F4B" sx={{ display: "flex", alignItems: "center" }}>
-                          <CurrencyRupee fontSize="small" sx={{ mr: 0.25 }} />
-                          {item?.vendor_price}
-                        </Typography>
-                        
-                        {/* Food Type and Cuisine */}
-                        <Stack direction="column" spacing={0.5}>
-                          <Chip
-                            label={formatFoodType(item.food_type)}
-                            size="small"
-                            sx={{ 
-                              height: 20, 
-                              fontSize: "0.7rem",
-                              bgcolor: alpha(theme.palette.primary.main, 0.1),
-                              color: theme.palette.primary.main
-                            }}
-                          />
-                          
-                          <Chip
-                            label={formatCuisineName(item.cuisine)}
-                            size="small"
-                            sx={{ 
-                              height: 20, 
-                              fontSize: "0.7rem",
-                              bgcolor: alpha(theme.palette.secondary.main, 0.1),
-                              color: theme.palette.secondary.main
-                            }}
-                          />
-                        </Stack>
-                      </Stack>
-                      
-                      {/* Truncated Description */}
-                      {item?.description && (
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary"
-                          sx={{
-                            fontSize: '0.8rem',
-                            lineHeight: 1.4
-                          }}
-                        >
-                          {truncateDescription(item.description)}
-                        </Typography>
-                      )}
-                    </Stack>
-                  </Grid>
-                  
-                  {/* Action Buttons and Status Toggle */}
-                  <Grid item xs={4} sm={4}>
-                    <Stack alignItems="flex-end">
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        In Stock
-                      </Typography>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        {/* Edit Button */}
-                        <Stack direction={'column'}>
-                        <IconButton 
-                          size="small"
-                          color="primary"
-                          onClick={() => handleEditClick(item)}
-                          sx={{
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            bgcolor: 'white',
-                            '&:hover': {
-                              bgcolor: alpha('#2196f3', 0.1),
-                            }
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        
-                        {/* Delete Button */}
-                        <IconButton 
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteClick(item.item_id)}
-                          sx={{
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            bgcolor: 'white',
-                            '&:hover': {
-                              bgcolor: alpha('#f44336', 0.1),
-                            }
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                         </Stack>
-                        {/* Status Toggle */}
-                        {statusChanging === item.item_id ? (
-                          <CircularProgress size={24} />
-                        ) : (
-                          <Switch
-                            edge="end"
-                            checked={Boolean(item?.status)}
-                            onChange={() => handleStatus(item.item_id, item.status === 1 ? 0 : 1)}
-                            sx={{
-                              '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: '#3B7F4B',
-                                '&:hover': {
-                                  backgroundColor: alpha('#3B7F4B', 0.1),
-                                },
-                              },
-                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: '#3B7F4B',
-                              },
-                            }}
-                          />
-                        )}
-                      </Stack>
-                    </Stack>
-                  </Grid>
-                </Grid>
-              </Paper>
-            ))}
-          </Stack>
+                ))}
+              </Grid>
+            ) : (
+              <Stack spacing={2}>
+                {filteredItems.map((item) => (
+                  <MenuItemListItem key={item.item_id} item={item} />
+                ))}
+              </Stack>
+            )}
+          </>
         ) : (
-          <Box sx={{ 
+          <Paper sx={{ 
             textAlign: "center", 
             py: 8, 
-            px: 2, 
-            bgcolor: "white", 
-            borderRadius: 3,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+            px: 2
           }}>
-            <RestaurantMenu sx={{ fontSize: 60, color: "text.disabled", mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
+            <RestaurantMenu sx={{ fontSize: 80, color: "text.disabled", mb: 2 }} />
+            <Typography variant="h5" color="text.secondary" gutterBottom>
               No menu items found
             </Typography>
-            <Typography variant="body2" color="text.secondary" mb={3}>
+            <Typography variant="body1" color="text.secondary" mb={3}>
               {activeFiltersCount > 0 
                 ? "Try adjusting your filters or search query"
                 : "Add your first menu item to get started"}
@@ -718,6 +999,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                 variant="outlined" 
                 onClick={resetFilters}
                 startIcon={<ClearAll />}
+                size="large"
               >
                 Clear Filters
               </Button>
@@ -726,11 +1008,16 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
                 variant="contained" 
                 onClick={() => setCreateModalVisible(true)}
                 startIcon={<Add />}
+                size="large"
+                sx={{
+                  bgcolor: "#EB8041",
+                  "&:hover": { bgcolor: "#D26E2F" }
+                }}
               >
                 Add Menu Item
               </Button>
             )}
-          </Box>
+          </Paper>
         )}
       </Box>
       
@@ -784,9 +1071,18 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
         onSuccess={handleEditSuccess}
       />
       
-      {/* Filter Drawer */}
+      {/* Import Dialog */}
+      {isImportDialogOpen && (
+        <ImportBulk
+          open={isImportDialogOpen}
+          onOpenChange={setisImportDialogOpen}
+          outletId={outletid?.outlet_id}
+        />
+      )}
+      
+      {/* Filter Drawer for Mobile */}
       {renderFilterDrawer()}
-    </Box>
+    </Container>
   );
 };
 
