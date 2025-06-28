@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import axiosInstance from '../interceptor/axiosInstance';
+import XlFormat from './XlFormat';
 
 // Styled components
 const UploadArea = styled(Paper)(({ theme }) => ({
@@ -216,6 +217,7 @@ const ImportBulk: React.FC<ImportBulkProps> = ({
         </DialogContent>
         
         <DialogActions sx={{ px: 3, pb: 2 }}>
+          <XlFormat data={[]} isLoading={false}/>
           <Button 
             variant="outlined" 
             onClick={handleClose}

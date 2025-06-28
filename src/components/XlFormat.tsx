@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Button } from '@mui/material';
 
-const XlFormat = ({ data = [], isLoading = false }) => {
+const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => {
   const handleDownload = async () => {
     // Create a new workbook
     const workbook = new ExcelJS.Workbook();
@@ -80,7 +80,7 @@ const XlFormat = ({ data = [], isLoading = false }) => {
   return (
     <Button 
       onClick={handleDownload} 
-      className=""
+      style={{backgroundColor:'green', color:'white'}}
       disabled={isLoading || data.length === 0}
     >
       <Download className="h-4 w-4" />

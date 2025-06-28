@@ -717,13 +717,8 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
             </ToggleButtonGroup>
           )}
           
-          <Button
-            variant="outlined"
-            startIcon={<FileDownload />}
-            onClick={() => {/* XlFormat functionality */}}
-          >
-            Export
-          </Button>
+         
+          <XlFormat data={items} isLoading={loading}/>
           
           <Button
             variant="outlined"
