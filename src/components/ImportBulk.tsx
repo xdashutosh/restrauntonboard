@@ -21,6 +21,7 @@ import {
 import { styled } from '@mui/material/styles';
 import axiosInstance from '../interceptor/axiosInstance';
 import XlFormat from './XlFormat';
+import SampleXl from './SampleXl';
 
 // Styled components
 const UploadArea = styled(Paper)(({ theme }) => ({
@@ -153,6 +154,17 @@ const ImportBulk: React.FC<ImportBulkProps> = ({
     }
   };
 
+  const sampledata =[
+    {
+      item_name: "Sample Item",
+      description: "This is a sample item description.",
+      vendor_price: 10.99,
+      opening_time: "08:00",
+      closing_time: "22:00",
+      is_vegetarian: true,
+    }
+  ]
+
   return (
     <>
       <Dialog 
@@ -217,7 +229,7 @@ const ImportBulk: React.FC<ImportBulkProps> = ({
         </DialogContent>
         
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <XlFormat data={[]} isLoading={false}/>
+          <SampleXl data={sampledata} isLoading={false}/>
           <Button 
             variant="outlined" 
             onClick={handleClose}

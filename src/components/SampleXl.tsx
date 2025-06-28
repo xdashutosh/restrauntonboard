@@ -73,27 +73,13 @@ const FOOD_TYPES = [
   "JAIN_FOOD"
 ];
 
-const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => {
+const SampleXl = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => {
   const handleDownload = async () => {
     // Create a new workbook
     const workbook = new ExcelJS.Workbook();
 
     // Add the Items worksheet
     const worksheet = workbook.addWorksheet('Items');
-
-    // Create a hidden sheet for dropdown data
-    const dropdownSheet = workbook.addWorksheet('DropdownData');
-    dropdownSheet.state = 'hidden';
-    
-    // Add cuisine options to column A
-    CUISINES.forEach((cuisine, index) => {
-      dropdownSheet.getCell(index + 1, 1).value = cuisine;
-    });
-    
-    // Add food type options to column B
-    FOOD_TYPES.forEach((foodType, index) => {
-      dropdownSheet.getCell(index + 1, 2).value = foodType;
-    });
 
     // Define the columns to exclude
     const excludeColumns = [
@@ -164,6 +150,20 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
       const cuisineColumnIndex = allColumns.indexOf('cuisine') + 1; // Excel is 1-indexed
       const foodTypeColumnIndex = allColumns.indexOf('food_type') + 1;
 
+      // Create a hidden sheet for dropdown data
+      const dropdownSheet = workbook.addWorksheet('DropdownData');
+      dropdownSheet.state = 'hidden';
+      
+      // Add cuisine options to column A
+      CUISINES.forEach((cuisine, index) => {
+        dropdownSheet.getCell(index + 1, 1).value = cuisine;
+      });
+      
+      // Add food type options to column B
+      FOOD_TYPES.forEach((foodType, index) => {
+        dropdownSheet.getCell(index + 1, 2).value = foodType;
+      });
+
       // Add data validation (dropdown) for cuisine column
       if (cuisineColumnIndex > 0) {
         const lastRow = Math.max(worksheet.rowCount, 100);
@@ -172,7 +172,7 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
         worksheet.dataValidations.add(`${worksheet.getColumn(cuisineColumnIndex).letter}2:${worksheet.getColumn(cuisineColumnIndex).letter}${lastRow}`, {
           type: 'list',
           allowBlank: true,
-          formulae: [`DropdownData!$A$1:$A$${CUISINES.length}`],
+          formulae: [`DropdownData!$A$1:$A${CUISINES.length}`],
           showErrorMessage: true,
           errorStyle: 'error',
           errorTitle: 'Invalid Cuisine',
@@ -188,7 +188,7 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
         worksheet.dataValidations.add(`${worksheet.getColumn(foodTypeColumnIndex).letter}2:${worksheet.getColumn(foodTypeColumnIndex).letter}${lastRow}`, {
           type: 'list',
           allowBlank: true,
-          formulae: [`DropdownData!$B$1:$B$${FOOD_TYPES.length}`],
+          formulae: [`DropdownData!$B$1:$B${FOOD_TYPES.length}`],
           showErrorMessage: true,
           errorStyle: 'error',
           errorTitle: 'Invalid Food Type',
@@ -197,10 +197,13 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
       }
 
     } else {
-      // If no data, create sheet with just the default columns
+      // If no data, create sheet with just the default columns for sample
       const columns = [
         { header: 'cuisine', key: 'cuisine', width: 25 },
-        { header: 'food_type', key: 'food_type', width: 25 }
+        { header: 'food_type', key: 'food_type', width: 25 },
+        { header: 'item_name', key: 'item_name', width: 30 },
+        { header: 'description', key: 'description', width: 40 },
+        { header: 'price', key: 'price', width: 15 }
       ];
       
       worksheet.columns = columns;
@@ -213,12 +216,35 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
         fgColor: { argb: 'FFE0E0E0' } 
       };
 
-      // Add dropdown validation for empty sheet
+      // Add sample data row
+      worksheet.addRow({
+        cuisine: '',
+        food_type: '',
+        item_name: 'Sample Item Name',
+        description: 'Sample item description',
+        price: '100'
+      });
+
+      // Create a hidden sheet for dropdown data
+      const dropdownSheet = workbook.addWorksheet('DropdownData');
+      dropdownSheet.state = 'hidden';
+      
+      // Add cuisine options to column A
+      CUISINES.forEach((cuisine, index) => {
+        dropdownSheet.getCell(index + 1, 1).value = cuisine;
+      });
+      
+      // Add food type options to column B
+      FOOD_TYPES.forEach((foodType, index) => {
+        dropdownSheet.getCell(index + 1, 2).value = foodType;
+      });
+
+      // Add dropdown validation for sample sheet
       // Cuisine dropdown (column 1) - range A2:A100
       worksheet.dataValidations.add('A2:A100', {
         type: 'list',
         allowBlank: true,
-        formulae: [`DropdownData!$A$1:$A$${CUISINES.length}`],
+        formulae: [`DropdownData!$A$1:$A${CUISINES.length}`],
         showErrorMessage: true,
         errorStyle: 'error',
         errorTitle: 'Invalid Cuisine',
@@ -229,7 +255,7 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
       worksheet.dataValidations.add('B2:B100', {
         type: 'list',
         allowBlank: true,
-        formulae: [`DropdownData!$B$1:$B$${FOOD_TYPES.length}`],
+        formulae: [`DropdownData!$B$1:$B${FOOD_TYPES.length}`],
         showErrorMessage: true,
         errorStyle: 'error',
         errorTitle: 'Invalid Food Type',
@@ -244,7 +270,7 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
-    saveAs(blob, 'MenuItems.xlsx');
+    saveAs(blob, 'MenuItems_Sample.xlsx');
   };
 
   return (
@@ -254,9 +280,9 @@ const XlFormat = ({ data = [], isLoading = false }:{data:any,isLoading:any}) => 
       disabled={isLoading}
     >
       <Download className="h-4 w-4" />
-      Export Items
+      Download Sample file
     </Button>
   );
 };
 
-export default XlFormat;
+export default SampleXl;
