@@ -129,10 +129,9 @@ const ImportBulk: React.FC<ImportBulkProps> = ({
 
       if (response.data.status === 1) {
         showToast('Items imported successfully', 'success');
-        // window.location.reload();
-        // Close the dialog and reset state
-        // setSelectedFile(null);
-        // onOpenChange(false);
+        window.location.reload();
+        setSelectedFile(null);
+        onOpenChange(false);
       } else {
         throw new Error(response.data.message || "Failed to import items");
       }
