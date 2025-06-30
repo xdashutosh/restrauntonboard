@@ -20,7 +20,6 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import axiosInstance from '../interceptor/axiosInstance';
-import XlFormat from './XlFormat';
 import SampleXl from './SampleXl';
 
 // Styled components
@@ -121,7 +120,7 @@ const ImportBulk: React.FC<ImportBulkProps> = ({
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      await axiosInstance.delete(`/bulkdeletedish/${outletId}`);
+      // await axiosInstance.delete(`/bulkdeletedish/${outletId}`);
       const response = await axiosInstance.post(`/itemupload/${outletId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -130,10 +129,10 @@ const ImportBulk: React.FC<ImportBulkProps> = ({
 
       if (response.data.status === 1) {
         showToast('Items imported successfully', 'success');
-        window.location.reload();
+        // window.location.reload();
         // Close the dialog and reset state
-        setSelectedFile(null);
-        onOpenChange(false);
+        // setSelectedFile(null);
+        // onOpenChange(false);
       } else {
         throw new Error(response.data.message || "Failed to import items");
       }
@@ -161,7 +160,7 @@ const ImportBulk: React.FC<ImportBulkProps> = ({
       vendor_price: 10.99,
       opening_time: "08:00",
       closing_time: "22:00",
-      is_vegetarian: true,
+      is_vegeterian: 1,
     }
   ]
 

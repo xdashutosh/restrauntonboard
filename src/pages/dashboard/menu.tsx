@@ -318,10 +318,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
           height="200"
           image={item?.image || "https://via.placeholder.com/300x200?text=No+Image"}
           alt={item.item_name}
-          sx={{ objectFit: 'cover' }}
-          onError={(e) => {
-            e.target.src = "https://via.placeholder.com/300x200?text=No+Image";
-          }}
+          sx={{ objectFit: 'fill' }}
         />
         
         {/* Veg/Non-veg indicator */}
