@@ -297,6 +297,9 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
   const inactiveItems = items.filter(item => item.status === 0).length;
   const avgPrice = items.length > 0 ? items.reduce((acc, item) => acc + item.vendor_price, 0) / items.length : 0;
 
+  const capitalizeWords = (str: string) => {
+  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+};
   const MenuItemCard = ({ item }: { item: MenuItem }) => (
     <Card
       sx={{
@@ -316,7 +319,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
         <CardMedia
           component="img"
           height="200"
-          image={item?.image || "https://via.placeholder.com/300x200?text=No+Image"}
+          image={item?.image || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRWCY2m1r8yNTt7x4YzvVf0d9-xJHbgtPmkCw&s"}
           alt={item.item_name}
           sx={{ objectFit: 'fill' }}
         />
@@ -355,7 +358,7 @@ const Menu: React.FC<MenuProps> = ({ restdata }) => {
       
       <CardContent sx={{ flexGrow: 1, p: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, lineHeight: 1.2 }}>
-          {item.item_name}
+          {capitalizeWords(item.item_name)}
         </Typography>
         
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>

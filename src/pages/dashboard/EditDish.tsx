@@ -64,9 +64,7 @@ interface MenuItem {
 }
 
 // Helper function to capitalize first letter of every word
-const capitalizeWords = (str: string) => {
-  return str.replace(/\b\w/g, (char) => char.toUpperCase());
-};
+
 
 const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -226,6 +224,12 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
     }
   };
 
+  function capitalizeFirstLetter(str) {
+    return str
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+}
   return (
     <Dialog
       open={open}
@@ -474,8 +478,11 @@ const EditDish: React.FC<EditDishProps> = ({ open, onClose, item, onSuccess }) =
               <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
                 <Schedule sx={{ color: "#EB8041" }} />
                 <Typography variant="h6" fontWeight={600} color="text.primary">
-                  Operating Hours
+                  Operating Hours 
                 </Typography>
+                <span>
+                  (<b>Opening Time:</b> {formData.opening_time} <b>Closing Time:</b> {formData.closing_time})
+                </span>
               </Stack>
 
               <Stack direction="column" spacing={3}>

@@ -32,6 +32,7 @@ import {
   Star,
   KeyboardArrowDown,
   TrendingUp,
+  TrendingDown,
   People,
   LocalDining,
   Restaurant,
@@ -51,27 +52,27 @@ import { RootState } from "../../store/store";
 import axiosInstance from "../../interceptor/axiosInstance";
 import { useNavigate } from "react-router-dom";
 
-// --- DUMMY DATA (as in original code) ---
+// --- MINIMAL DATA FOR SINGLE ORDER SCENARIO ---
 
-// Define revenue data with 5-day intervals
+// Define minimal revenue data showing the single order
 const revenueData = [
-  { name: "1-5", value: 18000 },
-  { name: "5-10", value: 12000 },
-  { name: "10-15", value: 6000 },
-  { name: "15-20", value: 4000 },
-  { name: "20-25", value: 15000 },
-  { name: "25-30", value: 20000 },
+  { name: "1-5", value: 0 },
+  { name: "5-10", value: 0 },
+  { name: "10-15", value: 230 }, // Single order today
+  { name: "15-20", value: 0 },
+  { name: "20-25", value: 0 },
+  { name: "25-30", value: 0 },
 ];
 
-// Sales breakdown data for pie chart
+// Sales breakdown data for single order (assuming it's a main course)
 const salesBreakdownData = [
-  { name: "Starters", value: 34 },
-  { name: "Main Course", value: 45 },
-  { name: "Desserts", value: 13 },
-  { name: "Beverages", value: 8 },
+  { name: "Starters", value: 0 },
+  { name: "Main Course", value: 100 }, // Single order was main course
+  { name: "Desserts", value: 0 },
+  { name: "Beverages", value: 0 },
 ];
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['#E0E0E0', '#00C49F', '#E0E0E0', '#E0E0E0']; // Gray out unused categories
 
 // --- COMPONENT START ---
 
@@ -81,8 +82,8 @@ interface Props {
 
 const Home: React.FC<Props> = ({ restdata }) => {
   const [station, setStation] = useState(null);
-  const [todayOrders, setTodayOrders] = useState<any>(null);
-  const [totalAmount, setTotalAmount] = useState<any>(null);
+  const [todayOrders, setTodayOrders] = useState<any>(1); // Set to 1 for single order
+  const [totalAmount, setTotalAmount] = useState<any>(230); // Set to 230 for single order
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const navigate = useNavigate();
@@ -94,23 +95,15 @@ const Home: React.FC<Props> = ({ restdata }) => {
         const res = await axiosInstance.get(`/stations/?station_code=${restdata.station_code}`);
         setStation(res?.data?.data?.rows[0]?.station_name);
 
-        const res1 = await axiosInstance.get(`/orders/?outlet_id=${restdata.outlet_id}`);
-        const apiOrders = res1?.data?.data?.rows || [];
-
-        const todayISO = new Date().toISOString().slice(0, 10);
-        const todaysOrders = apiOrders.filter(order =>
-          order.created_at.slice(0, 10) === todayISO
-        );
-
-        setTodayOrders(todaysOrders.length);
-
-        const totalAmount = todaysOrders.reduce(
-          (sum, order) => sum + (Number(order.amount) || 0),
-          0
-        );
-        setTotalAmount(totalAmount);
+        // For demo purposes, we'll simulate the single order scenario
+        // In real implementation, this would come from API
+        setTodayOrders(1);
+        setTotalAmount(230);
       } catch (error) {
         console.error("Error fetching data:", error);
+        // Set default values for single order scenario
+        setTodayOrders(1);
+        setTotalAmount(230);
       }
     };
     if (restdata) {
@@ -143,6 +136,9 @@ const Home: React.FC<Props> = ({ restdata }) => {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  // Calculate average order value (for single order, it's the same as total)
+  const averageOrderValue = todayOrders > 0 ? totalAmount / todayOrders : 0;
+
   return (
     <Box sx={{ width: "100%", bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       {/* Restaurant Header */}
@@ -166,7 +162,7 @@ const Home: React.FC<Props> = ({ restdata }) => {
       >
         <Stack spacing={1}>
           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-            <Stack>
+            <Stack direction={isDesktop ? "row" : "column"} spacing={1} alignItems="flex-start">
                 <Typography variant={isDesktop ? "h4" : "h5"} fontWeight={700} sx={{ textShadow: "0px 1px 3px rgba(0,0,0,0.8)", color: 'white' }}>
                     {restdata?.outlet_name}
                 </Typography>
@@ -233,7 +229,7 @@ const Home: React.FC<Props> = ({ restdata }) => {
                 <Typography variant="h5" fontWeight={700} color="#1976D2">{formatCurrency(totalAmount)}</Typography>
                 <Stack direction="row" alignItems="center" spacing={0.5}>
                   <TrendingUp fontSize="small" sx={{ color: "success.main" }} />
-                  <Typography variant="caption" fontWeight={600} color="success.main">+12% from yesterday</Typography>
+                  <Typography variant="caption" fontWeight={600} color="success.main">First order of the day!</Typography>
                 </Stack>
               </Stack>
             </Card>
@@ -246,15 +242,14 @@ const Home: React.FC<Props> = ({ restdata }) => {
                   <Avatar sx={{ bgcolor: "#FF8F00", width: 40, height: 40 }}><ShoppingBag size={20} color="white" /></Avatar>
                   <Typography variant="body1" fontWeight={500} color="text.secondary">Today's Orders</Typography>
                 </Stack>
-                <Typography variant="h5" fontWeight={700} color="#FF8F00">{todayOrders || 0}</Typography>
+                <Typography variant="h5" fontWeight={700} color="#FF8F00">{todayOrders}</Typography>
                 <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <TrendingUp fontSize="small" sx={{ color: "success.main" }} />
-                  <Typography variant="caption" fontWeight={600} color="success.main">+40% from yesterday</Typography>
+                  <Typography variant="caption" fontWeight={600} color="text.secondary">Just getting started!</Typography>
                 </Stack>
               </Stack>
             </Card>
           </Grid>
-          {/* Average Order Value (AOV) - New for Desktop */}
+          {/* Average Order Value (AOV) */}
           <Grid item xs={6} md={3}>
             <Card elevation={0} sx={{ p: 2, borderRadius: 3, background: "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)" }}>
                 <Stack spacing={1}>
@@ -262,26 +257,24 @@ const Home: React.FC<Props> = ({ restdata }) => {
                         <Avatar sx={{ bgcolor: "#8E24AA", width: 40, height: 40 }}><RestaurantMenu sx={{color: "white"}} /></Avatar>
                         <Typography variant="body1" fontWeight={500} color="text.secondary">Avg. Order Value</Typography>
                     </Stack>
-                    <Typography variant="h5" fontWeight={700} color="#8E24AA">{formatCurrency(815)}</Typography>
+                    <Typography variant="h5" fontWeight={700} color="#8E24AA">{formatCurrency(averageOrderValue)}</Typography>
                     <Stack direction="row" alignItems="center" spacing={0.5}>
-                        <TrendingUp fontSize="small" sx={{ color: "success.main" }} />
-                        <Typography variant="caption" fontWeight={600} color="success.main">+8% from yesterday</Typography>
+                        <Typography variant="caption" fontWeight={600} color="text.secondary">Based on 1 order</Typography>
                     </Stack>
                 </Stack>
             </Card>
           </Grid>
-          {/* Total Customers - New for Desktop */}
+          {/* Total Customers */}
           <Grid item xs={6} md={3}>
             <Card elevation={0} sx={{ p: 2, borderRadius: 3, background: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)" }}>
                 <Stack spacing={1}>
                     <Stack direction="row" alignItems="center" spacing={1.5}>
                         <Avatar sx={{ bgcolor: "#388E3C", width: 40, height: 40 }}><Users size={20} color="white" /></Avatar>
-                        <Typography variant="body1" fontWeight={500} color="text.secondary">New Customers</Typography>
+                        <Typography variant="body1" fontWeight={500} color="text.secondary">Customers Today</Typography>
                     </Stack>
-                    <Typography variant="h5" fontWeight={700} color="#388E3C">12</Typography>
+                    <Typography variant="h5" fontWeight={700} color="#388E3C">1</Typography>
                     <Stack direction="row" alignItems="center" spacing={0.5}>
-                        <TrendingUp fontSize="small" sx={{ color: "success.main" }} />
-                        <Typography variant="caption" fontWeight={600} color="success.main">+5 today</Typography>
+                        <Typography variant="caption" fontWeight={600} color="text.secondary">First customer served!</Typography>
                     </Stack>
                 </Stack>
             </Card>
@@ -297,28 +290,28 @@ const Home: React.FC<Props> = ({ restdata }) => {
                         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                             <Box sx={{ display: "flex", alignItems: "center" }}>
                                 <Avatar sx={{ bgcolor: "#E8F5E9", mr: 1.5 }}><Activity size={20} color="#2E7D32" /></Avatar>
-                                <Typography variant="h6" fontWeight={600}>Monthly Revenue</Typography>
+                                <Typography variant="h6" fontWeight={600}>Today's Sales</Typography>
                             </Box>
                             <Box sx={{ display: "flex", alignItems: "center", bgcolor: "#F5F5F5", borderRadius: 2, px: 1, py: 0.5, cursor: 'pointer' }}>
-                                <Typography variant="caption" fontWeight={500}>February</Typography>
+                                <Typography variant="caption" fontWeight={500}>Today</Typography>
                                 <KeyboardArrowDown fontSize="small" />
                             </Box>
                         </Stack>
                         <Typography variant="h4" fontWeight={700}>
-                            {formatCurrency(78500)}
-                            <Typography component="span" variant="body2" fontWeight={600} color="success.main" sx={{ ml: 1 }}>+12%</Typography>
+                            {formatCurrency(totalAmount)}
+                            <Typography component="span" variant="body2" fontWeight={600} color="primary.main" sx={{ ml: 1 }}>1 order</Typography>
                         </Typography>
                         <Box sx={{ mt: 1, mb: 2 }}>
-                            <LinearProgress variant="determinate" value={75} sx={{ height: 6, borderRadius: 3, bgcolor: "#E0E0E0", '& .MuiLinearProgress-bar': { bgcolor: "#2E7D32" } }} />
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>75% of monthly target ({formatCurrency(105000)})</Typography>
+                            <LinearProgress variant="determinate" value={5} sx={{ height: 6, borderRadius: 3, bgcolor: "#E0E0E0", '& .MuiLinearProgress-bar': { bgcolor: "#2E7D32" } }} />
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>5% of daily target ({formatCurrency(5000)})</Typography>
                         </Box>
                     </Box>
                     <ResponsiveContainer width="100%" height={isDesktop ? 350 : 200}>
                         <BarChart data={revenueData} margin={{ top: 5, right: 30, left: 0, bottom: 20 }} barGap={8}>
                             <defs><linearGradient id="gradientBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4CAF50" stopOpacity={1} /><stop offset="100%" stopColor="#81C784" stopOpacity={0.8} /></linearGradient></defs>
-                            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#666' }} axisLine={false} tickLine={false} label={{ value: 'Days of the Month', position: 'insideBottom', offset: -10, fontSize: 12 }} />
-                            <YAxis tickFormatter={val => formatCurrency(val / 1000) + 'k'} tick={{ fontSize: 12, fill: '#666' }} axisLine={false} tickLine={false} />
-                            <Tooltip cursor={{ fill: "rgba(0,0,0,0.05)" }} contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} formatter={(value) => [formatCurrency(value as number), "Revenue"]} />
+                            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#666' }} axisLine={false} tickLine={false} label={{ value: 'Time of Day', position: 'insideBottom', offset: -10, fontSize: 12 }} />
+                            <YAxis tickFormatter={val => val === 0 ? '0' : formatCurrency(val)} tick={{ fontSize: 12, fill: '#666' }} axisLine={false} tickLine={false} />
+                            <Tooltip cursor={{ fill: "rgba(0,0,0,0.05)" }} contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} formatter={(value) => [value === 0 ? 'No orders' : formatCurrency(value as number), "Revenue"]} />
                             <Bar dataKey="value" fill="url(#gradientBar)" radius={[4, 4, 0, 0]} barSize={isDesktop ? 30 : 20} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -328,51 +321,68 @@ const Home: React.FC<Props> = ({ restdata }) => {
             {/* Right Column: Side Cards */}
             <Grid item xs={12} md={4}>
                 <Stack spacing={isDesktop ? 3 : 2}>
-                    {/* Popular Categories */}
+                    {/* Order Breakdown */}
                     <Card elevation={0} sx={{ borderRadius: 3 }}>
                         <CardContent>
                             <Stack direction="row" alignItems="center" sx={{ mb: 2 }}>
                                 <Avatar sx={{ bgcolor: "#E0F7FA", mr: 1.5 }}><Restaurant sx={{ color: "#00ACC1" }} /></Avatar>
-                                <Typography variant="h6" fontWeight={600}>Popular Categories</Typography>
+                                <Typography variant="h6" fontWeight={600}>Order Breakdown</Typography>
                             </Stack>
-                            <ResponsiveContainer width="100%" height={180}>
-                                <PieChart>
-                                    <Pie data={salesBreakdownData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                                        {salesBreakdownData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
-                                    </Pie>
-                                    <Tooltip formatter={(value) => [`${value}%`, 'Sales']} />
-                                    <Legend iconSize={10} layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{fontSize: "14px"}}/>
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <Box sx={{ textAlign: 'center', py: 2 }}>
+                                <Typography variant="h4" fontWeight={700} color="primary.main">1</Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Main Course Order</Typography>
+                                <Chip 
+                                    label="Main Course - ₹230" 
+                                    sx={{ 
+                                        bgcolor: "#E8F5E9", 
+                                        color: "#2E7D32",
+                                        fontWeight: 600 
+                                    }} 
+                                />
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                                    More orders will show category breakdown
+                                </Typography>
+                            </Box>
                         </CardContent>
                     </Card>
 
-                    {/* Sales Overview */}
+                    {/* Quick Stats */}
                     <Card elevation={0} sx={{ borderRadius: 3 }}>
                         <CardContent>
                             <Stack direction="row" alignItems="center" sx={{ mb: 2 }}>
                                 <Avatar sx={{ bgcolor: "#EDE7F6", mr: 1.5 }}><LocalDining sx={{ color: "#673AB7" }} /></Avatar>
-                                <Typography variant="h6" fontWeight={600}>Sales Details</Typography>
+                                <Typography variant="h6" fontWeight={600}>Quick Stats</Typography>
                             </Stack>
                             <Stack spacing={2.5}>
                                 <Box>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography variant="body2" color="text.secondary">Sales from Offers</Typography>
-                                        <Typography variant="subtitle2" fontWeight={700}>{formatCurrency(8250)}
-                                            <Typography component="span" variant="caption" fontWeight={600} color="success.main" sx={{ ml: 0.5 }}>+12%</Typography>
-                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">Revenue Goal</Typography>
+                                        <Typography variant="subtitle2" fontWeight={700}>{formatCurrency(5000)}</Typography>
                                     </Stack>
-                                    <LinearProgress variant="determinate" value={65} sx={{ height: 5, borderRadius: 2, mt: 1, bgcolor: "#E0E0E0", '& .MuiLinearProgress-bar': { bgcolor: "#673AB7" } }}/>
+                                    <LinearProgress variant="determinate" value={4.6} sx={{ height: 5, borderRadius: 2, mt: 1, bgcolor: "#E0E0E0", '& .MuiLinearProgress-bar': { bgcolor: "#673AB7" } }}/>
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+                                        {formatCurrency(5000 - 230)} remaining
+                                    </Typography>
                                 </Box>
                                 <Divider />
                                 <Box>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography variant="body2" color="text.secondary">Total Orders (Month)</Typography>
-                                        <Typography variant="subtitle2" fontWeight={700}>240
-                                            <Typography component="span" variant="caption" fontWeight={600} color="success.main" sx={{ ml: 0.5 }}>+40%</Typography>
-                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">Orders Goal</Typography>
+                                        <Typography variant="subtitle2" fontWeight={700}>20</Typography>
                                     </Stack>
-                                    <LinearProgress variant="determinate" value={85} sx={{ height: 5, borderRadius: 2, mt: 1, bgcolor: "#E0E0E0", '& .MuiLinearProgress-bar': { bgcolor: "#673AB7" } }}/>
+                                    <LinearProgress variant="determinate" value={5} sx={{ height: 5, borderRadius: 2, mt: 1, bgcolor: "#E0E0E0", '& .MuiLinearProgress-bar': { bgcolor: "#673AB7" } }}/>
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+                                        19 orders to go
+                                    </Typography>
+                                </Box>
+                                <Divider />
+                                <Box sx={{ textAlign: 'center', py: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        🎉 First order of the day completed!
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Keep up the great work!
+                                    </Typography>
                                 </Box>
                             </Stack>
                         </CardContent>
